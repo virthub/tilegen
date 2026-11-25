@@ -1,0 +1,19 @@
+name: ascend_910c
+arch: Huawei Ascend 910C
+device: ascend
+sm: ascend_910c
+num_sms: 1
+max_smem_bytes: 196608
+max_registers_per_thread: 255
+warp_size: 32
+features: [cube, vector, dma, int8, bfloat16]
+quant_paths:
+  int8: native
+  int4: fused_dequant
+  fp8: emulated
+  fp4: emulated
+memory_tiers:
+  global: GM
+  scratchpad: L1 / UB
+  compute_input: L0A / L0B
+  accumulator: L0C

@@ -1,0 +1,19 @@
+name: sm_90a
+arch: NVIDIA Hopper H100
+device: cuda
+sm: sm_90a
+num_sms: 132
+max_smem_bytes: 233472
+max_registers_per_thread: 255
+warp_size: 32
+features: [tma, wgmma, warp_specialization, mbarrier, fp8, bfloat16]
+quant_paths:
+  int8: native
+  int4: fused_dequant
+  fp8: native
+  fp4: emulated
+memory_tiers:
+  global: HBM / Global Memory
+  scratchpad: SMEM
+  compute_input: Registers / SMEM (WGMMA desc)
+  accumulator: VGPR

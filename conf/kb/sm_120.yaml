@@ -1,0 +1,28 @@
+# Probe-certified hardware optimization recipe for NVIDIA Blackwell sm_120.
+# Measured on NVIDIA GeForce RTX 5090 D (driver 580.196.07), torch 2.9.1+cu128,
+# triton 3.5.1.  See benchmarks/triton_flash_attention.py and
+# src/tilegen/ops/flash.py.
+target: sm_120
+arch: NVIDIA Blackwell (GeForce RTX 5090 D)
+probe_date: 2026-11-19
+kernel: triton_fa2_forward
+variant: fa2_prefill
+config:
+  block_m: 64
+  block_n: 64
+  num_warps: 4
+  num_stages: 2
+  dtype: bf16
+  head_dim: 64
+metrics:
+  correctness:
+    max_abs_err: 3.9e-3
+    mean_cosine_similarity: 0.999996
+  performance:
+    tflops: 172.2
+    cublas_bf16_peak_tflops: 203.0
+    roofline_frac: 0.848
+notes: >
+  cuBLAS bf16 peak measured with an 8192^3 square GEMM.  The fa2_prefill
+  schedule reaches ~85% of that practical peak; fp16 and D=128 variants need
+  re-probing with larger BLOCK_N to lift the D=128 roofline fraction.

@@ -1,0 +1,19 @@
+name: gfx942
+arch: AMD CDNA3 MI300X
+device: rocm
+sm: gfx942
+num_sms: 304
+max_smem_bytes: 65536
+max_registers_per_thread: 256
+warp_size: 64
+features: [mfma, v_mfma, fp8, bfloat16]
+quant_paths:
+  int8: native
+  int4: fused_dequant
+  fp8: native
+  fp4: emulated
+memory_tiers:
+  global: HBM / Global Memory
+  scratchpad: LDS
+  compute_input: VGPR
+  accumulator: AGPR

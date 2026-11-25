@@ -1,0 +1,47 @@
+[build-system]
+requires = ["scikit-build-core>=0.9.0"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "tilegen"
+version = "0.1.0"
+description = "Layout-decoupled tile kernel generation, self-evolution, and AOT execution for LLM inference"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "TileGen Contributors" }]
+requires-python = ">=3.10,<3.14"
+keywords = ["llm", "flash-attention", "kernel", "triton", "tilelang", "quantization", "vllm"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+# Heavy compiler/agent dependencies are isolated to offline/build time only.
+tilelang = ["tilelang>=0.1"]
+triton-tle = ["triton>=3.0"]
+evolve = ["numpy>=1.24"]
+dev = ["pytest>=7.0", "numpy>=1.24"]
+
+[project.urls]
+Homepage = "https://example.invalid/tilegen"
+
+[project.entry-points."vllm.general_plugins"]
+tilegen = "tilegen.integrations.vllm.platform_plugin:register"
+
+[tool.scikit-build]
+cmake.build-type = "Release"
+wheel.packages = ["src/tilegen"]
+build-dir = "build/{wheel_tag}"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

@@ -1,0 +1,24 @@
+# Quick self-evolution smoke config (small budget, CI-friendly).
+target: sm_100a
+strategy: forgekernel
+variant: fa2_prefill
+attention:
+  batch: 1
+  num_heads: 8
+  num_kv_heads: 8
+  head_dim: 64
+  kv_head_dim: 64
+  seq_len: 512
+  num_kv_blocks: 256
+  page_size: 32
+  dtype: bf16
+  kv_quant:
+    dtype: fp4_e2m1
+    granularity: block
+    block_size: 16
+    scale_dtype: fp8_e4m3
+    pack_factor: 2
+budget:
+  generations: 2
+  candidates_per_generation: 4
+  plateau_window: 2

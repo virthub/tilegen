@@ -1,0 +1,4 @@
+# Probe-certified hardware optimization recipes (per TargetSpec).
+# Seeded in Phase 4; kept here as the KnowledgeStore backing directory.
+version: 1
+recipes: []

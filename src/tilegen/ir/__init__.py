@@ -1,0 +1,56 @@
+from tilegen.ir.builder import VTMBuilder, verify_kernel
+from tilegen.ir.from_dict import vtm_kernel_from_dict, vtm_kernel_from_json
+from tilegen.ir.ops import (
+    DequantOp,
+    GatherOp,
+    LoadOp,
+    MaskOp,
+    MatmulOp,
+    OnlineSoftmaxOp,
+    PipelineForOp,
+    StoreOp,
+    VTMKernel,
+    VTMOp,
+)
+from tilegen.ir.topology import (
+    ExecutionRoles,
+    GridMode,
+    GridTopology,
+    Materialize,
+    PhaseMode,
+    RasterOrder,
+    RecomputeBoundary,
+    TacticalKnobs,
+    TopologySpec,
+)
+from tilegen.ir.types import DataType, MemoryTier, SymbolicDim, VTMBuffer
+
+__all__ = [
+    "VTMBuilder",
+    "verify_kernel",
+    "vtm_kernel_from_dict",
+    "vtm_kernel_from_json",
+    "DequantOp",
+    "GatherOp",
+    "LoadOp",
+    "MaskOp",
+    "MatmulOp",
+    "OnlineSoftmaxOp",
+    "PipelineForOp",
+    "StoreOp",
+    "VTMKernel",
+    "VTMOp",
+    "ExecutionRoles",
+    "GridMode",
+    "GridTopology",
+    "Materialize",
+    "PhaseMode",
+    "RasterOrder",
+    "RecomputeBoundary",
+    "TacticalKnobs",
+    "TopologySpec",
+    "DataType",
+    "MemoryTier",
+    "SymbolicDim",
+    "VTMBuffer",
+]

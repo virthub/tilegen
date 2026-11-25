@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+
+# Virtual environments & build artifacts
+.venv/
+build/
+dist/
+*.so
+*.a
+.cubin
+.hsaco
+
+# Runtime caches & traces
+.tilegen_cache/
+*.json.trace
+tilegen_trace.json
+
+# Runtime-generated knowledge-base entries (probe-certified references/recipes)
+conf/kb/reference_*.json
+conf/kb/recipe_*.json
+conf/kb/autotuned.json
+
+# Editor / OS
+.DS_Store
+*.swp
+
+# Third-party sources fetched by install.sh (--with-vllm-pspkv)
+third_party/

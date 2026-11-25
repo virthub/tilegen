@@ -1,0 +1,13 @@
+# Pre-tuned tile & pipeline search space for FP8 attention (Phase 3 autotuner).
+target: sm_90a
+backend: tilelang
+search_space:
+  tile_m: [64, 128, 256]
+  tile_n: [64, 128, 256]
+  tile_k: [32, 64, 128]
+  pipeline_stages: [1, 2, 3, 4]
+  swizzle_mode: [NONE, B32, B64, B128]
+constraints:
+  tile_k_divisible_by_block_size: true
+  max_smem_bytes: 233472
+objective: min_device_time_us
