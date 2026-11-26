@@ -25,7 +25,7 @@ def run_selftest() -> Tuple[int, List[str]]:
     for name, fn in checks:
         try:
             fn()
-        except Exception as exc:  # noqa: BLE001 - report and continue
+        except Exception as exc: # noqa: BLE001 - report and continue
             failures.append(f"{name}: {exc!r}")
     return len(checks), failures
 

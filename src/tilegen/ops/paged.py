@@ -42,7 +42,7 @@ def paged_attention_forward(
     B, H_q, _, D = q.shape
     block_size = kv_layout.block_size
     H_kv = kv_layout.num_kv_heads
-    ratio = H_q // H_kv  # GQA repetition factor
+    ratio = H_q // H_kv # GQA repetition factor
     use_int4 = quant is not None and quant.is_sub_byte
 
     # Fast path: single-launch batched decode kernel (fp16 K/V, no dequant).
@@ -74,11 +74,11 @@ def paged_attention_forward(
         # [seq, H_q, D] -> [1, H_q, seq, D]
         k = k.permute(1, 0, 2).unsqueeze(0)
         v = v.permute(1, 0, 2).unsqueeze(0)
-        qb = q[b].unsqueeze(0)  # [1, H_q, 1, D]
+        qb = q[b].unsqueeze(0) # [1, H_q, 1, D]
 
         # Decode attention: 1 query token against `seq` keys (no causal mask).
         out = F.scaled_dot_product_attention(qb, k, v, is_causal=False, scale=sm_scale)
-        outs.append(out)  # [1, H_q, 1, D]
+        outs.append(out) # [1, H_q, 1, D]
 
     return torch.cat(outs, dim=0)
 

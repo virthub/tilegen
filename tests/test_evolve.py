@@ -47,7 +47,8 @@ class _MockKB:
     def record_certified(self, recipe, result):
         self.certified.append(recipe)
 
-    def promote_reference(self, candidate, result):
+    def promote_reference(self, candidate, result, expected_reference_id=None):
+        del expected_reference_id
         self.promoted.append(candidate.candidate_id)
         return candidate.candidate_id
 
@@ -73,7 +74,7 @@ class TestMutation:
         seen = set()
         for _ in range(30):
             seen.add(mutate_knobs(k.topology.knobs, rng).to_dict()["pipeline_stages"])
-        assert len(seen) > 1  # pipeline_stages gets mutated at least once
+        assert len(seen) > 1 # pipeline_stages gets mutated at least once
 
     def test_mutate_kernel_returns_new_kernel(self):
         import random
@@ -168,7 +169,7 @@ class TestScheduleCodesign:
         from tilegen.evolve.strategies.schedule_codesign import ScheduleCodesignEngine
 
         initial = _initial_kernel()
-        evalr = _MockEvaluator(time_us=50.0)  # all faster -> rewrites recorded
+        evalr = _MockEvaluator(time_us=50.0) # all faster -> rewrites recorded
         kb = _MockKB()
         engine = ScheduleCodesignEngine(seed=0)
         best = engine.run_campaign(initial, get_target("sm_90a"), evalr, kb,
@@ -223,7 +224,7 @@ class TestProfilerGuidedMutation:
         biased_hits = 0
         for _ in range(100):
             out = mutate_knobs(knobs, rng, bias=["pipeline_stages"])
-            # a biased mutation changes pipeline_stages (the only knob it changed)
+# a biased mutation changes pipeline_stages (the only knob it changed)
             # when the biased field was chosen; count pipeline_stages != original
             if out.pipeline_stages != knobs.pipeline_stages:
                 biased_hits += 1
@@ -280,8 +281,8 @@ class TestWorldModelValue:
         from tilegen.evolve.strategies.world_model import NearestNeighborValueModel
 
         m = NearestNeighborValueModel(k=3)
-        m.update(("a", 1, 100), 2.0)     # a fast state
-        m.update(("b", 9, 100), 0.5)     # a slow, distant state
+        m.update(("a", 1, 100), 2.0) # a fast state
+        m.update(("b", 9, 100), 0.5) # a slow, distant state
         # An unseen state near the fast one gets a high estimate.
         assert m.estimate(("a", 2, 100)) > 1.0
         assert m.estimate(("b", 8, 100)) < 1.0
@@ -318,7 +319,10 @@ def test_evaluator_covers_sdpa_and_fa1():
     k = torch.randn_like(q); v = torch.randn_like(q)
     ev = TritonAttentionEvaluator(q, k, v, is_causal=True, sm_scale=spec.scale,
                                   reference_params=knobs_to_params(base.topology.knobs), iters=6)
-    for variant in ("sdpa", "fa1", "fa2_bf16", "fa4_tilelang"):
+    variants = ["sdpa", "fa1", "fa2_bf16"]
+    if torch.cuda.get_device_capability()[0] >= 10:
+        variants.append("fa4_tilelang") # tcgen05 is Blackwell-only
+    for variant in variants:
         c = KernelCandidate(variant, [], base, variant=variant)
         r = ev.evaluate([c], get_target("sm_120"))[0]
         assert r.compiled, f"{variant} should compile (err: {r.error_log[:80]})"
@@ -364,7 +368,11 @@ def test_generated_kernel_evaluator_generic_flow():
     fa4 = build_dense_attention_vtm(spec, get_target("sm_120"), variant="fa4")
     assert backend_for_kernel(fa4) == "tilelang"
     r4 = ev.evaluate([KernelCandidate("fa4", [], fa4)], get_target("sm_120"))[0]
-    assert r4.compiled and r4.correct, f"FA4 generic flow: {r4.error_log[:120]}"
+    if torch.cuda.get_device_capability()[0] >= 10:
+        assert r4.compiled and r4.correct, f"FA4 generic flow: {r4.error_log[:120]}"
+    else:
+        # tcgen05 is Blackwell-only: the generic flow must fail cleanly.
+        assert not r4.compiled
 
 
 class TestGenericFlowMutation:

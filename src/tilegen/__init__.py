@@ -5,13 +5,13 @@ from typing import Iterator
 
 __version__ = "0.1.0"
 
-from tilegen.layout import (  # noqa: F401
+from tilegen.layout import ( # noqa: F401
     ContiguousLayout,
     PagedKVLayout,
     QuantSpec,
     TensorSpec,
 )
-from tilegen.ir import (  # noqa: F401
+from tilegen.ir import ( # noqa: F401
     MemoryTier,
     SymbolicDim,
     TacticalKnobs,
@@ -19,8 +19,8 @@ from tilegen.ir import (  # noqa: F401
     VTMBuilder,
     VTMKernel,
 )
-from tilegen.target import TargetSpec, get_target, load_target  # noqa: F401
-from tilegen.runtime import AOTArtifactCache, semantic_hash  # noqa: F401
+from tilegen.target import TargetSpec, get_target, load_target # noqa: F401
+from tilegen.runtime import AOTArtifactCache, semantic_hash # noqa: F401
 
 
 @contextlib.contextmanager

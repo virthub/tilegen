@@ -90,7 +90,7 @@ class WorldModelEngine(SynthesisEngine):
         best_speedup = 0.0
 
         for gen in range(generations):
-            # Expand the current beam; prioritize states with the highest
+# Expand the current beam; prioritize states with the highest
             # *estimated* value (which generalizes to unseen near-neighbors).
             ordered = sorted(
                 beam, key=lambda k: self.value_model.estimate(kernel_state(k)), reverse=True

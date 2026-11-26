@@ -59,7 +59,7 @@ def _build_case(device, fmt_code: int = 1, B: int = 2, H_kv: int = 8, H_q: int =
     cache = torch.zeros(num_blocks * page, dtype=torch.uint8, device=device)
     k_offsets = torch.arange(num_blocks, dtype=torch.int32, device=device) * page
     v_offsets = k_offsets + H_kv * k_bytes
-    head_stride = int(HEAD * eb)  # bytes per (h) head row
+    head_stride = int(HEAD * eb) # bytes per (h) head row
     block_offsets = torch.cat([k_offsets, v_offsets]).contiguous()
 
     prec_code = 4 if fmt_code == 4 else (fmt_code | (fmt_code << 2))
@@ -76,42 +76,42 @@ def _build_case(device, fmt_code: int = 1, B: int = 2, H_kv: int = 8, H_q: int =
     from tilegen.integrations.vllm_pspkv.attention_backend import _FP4_E2M1
 
     e2m1 = torch.tensor(_FP4_E2M1, dtype=torch.float32, device=device)
-    e2m1[7] = 3.0  # inf slot unused; keep finite for reference math
+    e2m1[7] = 3.0 # inf slot unused; keep finite for reference math
 
-    # Per-request reference K/V: prefix + current token, kept exactly
+# Per-request reference K/V: prefix + current token, kept exactly
     # representable in the chosen format.
     k_ref: list[torch.Tensor] = []
     v_ref: list[torch.Tensor] = []
     for r in range(B):
         seq = int(seq_lens[r].item())
-        if fmt_code == 1:  # fp8 e4m3
+        if fmt_code == 1: # fp8 e4m3
             kt = (torch.randint(0, 8, (seq, H_kv, HEAD), device=device) - 4).float() * 0.5
             vt = (torch.randint(0, 8, (seq, H_kv, HEAD), device=device) - 4).float() * 0.5
             key = key.mul(0).add_(1.0)
             value = value.mul(0).add_(-0.5)
-        elif fmt_code == 4:  # int8
+        elif fmt_code == 4: # int8
             kt = (torch.randint(0, 16, (seq, H_kv, HEAD), device=device) - 8).float()
             vt = (torch.randint(0, 16, (seq, H_kv, HEAD), device=device) - 8).float()
             key = key.mul(0).add_(2.0)
             value = value.mul(0).add_(-2.0)
-        elif fmt_code == 0:  # lossless fp16
+        elif fmt_code == 0: # lossless fp16
             kt = (torch.randint(0, 8, (seq, H_kv, HEAD), device=device) - 4).float()
             vt = (torch.randint(0, 8, (seq, H_kv, HEAD), device=device) - 4).float()
-            kt = kt.half().float()  # exactly what fp16 storage round-trips
+            kt = kt.half().float() # exactly what fp16 storage round-trips
             vt = vt.half().float()
             key = key.half().float().mul(0).add_(1.0)
             value = value.half().float().mul(0).add_(-0.5)
-        else:  # fp4 e2m1 (exclude the inf nibbles 6, 7, 14 and 15)
+        else: # fp4 e2m1 (exclude the inf nibbles 6, 7, 14 and 15)
             kidx = torch.randint(0, 12, (seq, H_kv, HEAD), device=device)
             vidx = torch.randint(0, 12, (seq, H_kv, HEAD), device=device)
-            kn = kidx + 2 * (kidx >= 6)   # -> {0..5, 8..13}, all finite
+            kn = kidx + 2 * (kidx >= 6) # -> {0..5, 8..13}, all finite
             vn = vidx + 2 * (vidx >= 6)
             kt = e2m1[kn]
             vt = e2m1[vn]
             key = key.mul(0).add_(1.0)
             value = value.mul(0).add_(-0.5)
-            kn[-1] = 2   # e2m1[2] = 1.0, matches the current-token key value
-            vn[-1] = 9   # e2m1[9] = -0.5, matches the current-token value value
+            kn[-1] = 2 # e2m1[2] = 1.0, matches the current-token key value
+            vn[-1] = 9 # e2m1[9] = -0.5, matches the current-token value value
 
         kt[-1] = key[r]
         vt[-1] = value[r]
@@ -132,15 +132,15 @@ def _build_case(device, fmt_code: int = 1, B: int = 2, H_kv: int = 8, H_q: int =
             for h in range(H_kv):
                 krow = k_start[:, h].reshape(-1, 1)
                 vrow = v_start[:, h].reshape(-1, 1)
-                if fmt_code == 0:  # fp16, 2 bytes/elem little-endian
-                    kb = kt[lo:hi, h].half().view(torch.uint8)  # [n, HEAD*2]
+                if fmt_code == 0: # fp16, 2 bytes/elem little-endian
+                    kb = kt[lo:hi, h].half().view(torch.uint8) # [n, HEAD*2]
                     vb = vt[lo:hi, h].half().view(torch.uint8)
                     d2 = torch.arange(HEAD, device=device) * 2
                     cache_flat[krow + d2[None, :]] = kb[:, 0::2]
                     cache_flat[krow + d2[None, :] + 1] = kb[:, 1::2]
                     cache_flat[vrow + d2[None, :]] = vb[:, 0::2]
                     cache_flat[vrow + d2[None, :] + 1] = vb[:, 1::2]
-                elif fmt_code == 3:  # fp4 nibbles
+                elif fmt_code == 3: # fp4 nibbles
                     knb = (kn[lo:hi, h] if fmt_code == 3 else None)
                     vnb = (vn[lo:hi, h] if fmt_code == 3 else None)
                     kpack = (knb[:, 0::2] | (knb[:, 1::2] << 4)).to(torch.uint8)
@@ -154,7 +154,7 @@ def _build_case(device, fmt_code: int = 1, B: int = 2, H_kv: int = 8, H_q: int =
                     d = torch.arange(HEAD, device=device)
                     cache_flat[krow + d[None, :]] = kt_blk[:, h].to(torch.float8_e4m3fn).view(torch.uint8)
                     cache_flat[vrow + d[None, :]] = vt_blk[:, h].to(torch.float8_e4m3fn).view(torch.uint8)
-                else:  # int8
+                else: # int8
                     d = torch.arange(HEAD, device=device)
                     cache_flat[krow + d[None, :]] = kt[lo:hi, h].to(torch.int8).view(torch.uint8)
                     cache_flat[vrow + d[None, :]] = vt[lo:hi, h].to(torch.int8).view(torch.uint8)
@@ -204,7 +204,7 @@ def _reference(case, scale):
 
     outs = []
     for r in range(2):
-        q4 = case.query[r].unsqueeze(0).unsqueeze(2)          # [1, H, 1, D]
+        q4 = case.query[r].unsqueeze(0).unsqueeze(2) # [1, H, 1, D]
         k4 = case.k_ref[r].transpose(0, 1).unsqueeze(0).to(torch.float16)
         v4 = case.v_ref[r].transpose(0, 1).unsqueeze(0).to(torch.float16)
         outs.append(F.scaled_dot_product_attention(
@@ -221,7 +221,7 @@ def test_decode_parity_with_psp_kv(fmt_code: int):
     layer = _layer()
     ref = _reference(case, scale)
 
-    # TileGen path first (read-only), then the fork path (write-back quantizes
+# TileGen path first (read-only), then the fork path (write-back quantizes
     # the current token into the cache — must not disturb the first run).
     tg_meta = TileGenPSPKVAttentionMetadata(common_metadata=meta_ns)
     tg_impl = TileGenPSPKVAttentionImpl(num_heads=8, head_size=HEAD, scale=scale,

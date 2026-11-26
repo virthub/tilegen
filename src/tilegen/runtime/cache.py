@@ -24,7 +24,7 @@ class ArtifactRecord:
     backend: str
     target: str
     spec: dict
-    artifact: Optional[str] = None   # path to .cubin/.hsaco/.so relative to cache dir
+    artifact: Optional[str] = None # path to .cubin/.hsaco/.so relative to cache dir
     meta: dict = field(default_factory=dict)
     created_at: float = field(default_factory=time.time)
 

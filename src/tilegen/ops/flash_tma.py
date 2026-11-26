@@ -38,8 +38,8 @@ def _fa2_tma_fwd(
 
     for start_n in range(0, hi, BLOCK_N):
         offs_n = start_n + tl.arange(0, BLOCK_N)
-        k = k_desc.load([off_hz * N_CTX + start_n, 0])      # [BLOCK_N, D]
-        qk = tl.dot(q, tl.trans(k))                          # [BLOCK_M, BLOCK_N]
+        k = k_desc.load([off_hz * N_CTX + start_n, 0]) # [BLOCK_N, D]
+        qk = tl.dot(q, tl.trans(k)) # [BLOCK_M, BLOCK_N]
         qk = qk * sm_scale
         if IS_CAUSAL:
             qk = tl.where(offs_m[:, None] >= offs_n[None, :], qk, float("-inf"))
@@ -52,7 +52,7 @@ def _fa2_tma_fwd(
         l_i = l_i * alpha + l_ij
         acc = acc * alpha[:, None]
 
-        v = v_desc.load([off_hz * N_CTX + start_n, 0])      # [BLOCK_N, D]
+        v = v_desc.load([off_hz * N_CTX + start_n, 0]) # [BLOCK_N, D]
         acc += tl.dot(p.to(v.dtype), v)
         m_i = m_ij
 

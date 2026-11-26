@@ -4,7 +4,15 @@
 
 from __future__ import annotations
 
-from tilegen.backend._common import TILELANG_DTYPE, header, shape_str, var
+from tilegen.backend._common import (
+    SKETCH_BANNER,
+    TILELANG_DTYPE,
+    guard_sketch,
+    header,
+    shape_str,
+    sketch_reason,
+    var,
+)
 from tilegen.backend.base import Backend, register_backend
 from tilegen.ir.ops import (
     DequantOp,
@@ -72,7 +80,9 @@ class TileLangBackend(Backend):
         if _is_dense_attention(kernel):
             return self._lower_dense_attention(kernel, target)
         self._use_tmem = target.supports("tensor_memory")
-        lines: list[str] = [header(kernel, target, "tilelang")]
+        guard_sketch(kernel)
+        lines: list[str] = [header(kernel, target, "tilelang"),
+                            f"{SKETCH_BANNER} - {sketch_reason(kernel)}"]
         lines += [
             "import tilelang",
             "import tilelang.language as T",

@@ -7,7 +7,9 @@ import pytest
 torch = pytest.importorskip("torch")
 
 pytestmark = pytest.mark.skipif(
-    not torch.cuda.is_available(), reason="requires a CUDA GPU"
+    not torch.cuda.is_available()
+    or torch.cuda.get_device_capability()[0] < 10,
+    reason="FA4 tcgen05 requires a Blackwell GPU (sm_100+)",
 )
 
 

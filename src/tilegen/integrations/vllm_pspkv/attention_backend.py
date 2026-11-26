@@ -1,7 +1,7 @@
 # src/tilegen/integrations/vllm_pspkv/attention_backend.py
 #
 # TILEGEN_PSPKV: TileGen attention backend for the vllm-pspkv fork (vLLM
-# 0.34.0 + PSP-KV precision-scalable paged KV cache).  Registered as an OOT
+# 0.34.0 + PSP-KV precision-scalable paged KV cache). Registered as an OOT
 # backend via the vLLM V1 registry; selected with
 # ``VLLM_ATTENTION_BACKEND=TILEGEN_PSPKV``.
 #
@@ -59,8 +59,8 @@ def _fp4_byte_table(device: torch.device) -> torch.Tensor:
     global _FP4_BYTE_TABLE
     if _FP4_BYTE_TABLE is None or _FP4_BYTE_TABLE.device != device:
         t = torch.tensor(_FP4_E2M1, dtype=torch.float32, device=device)
-        low = t.repeat(16)               # low[b]  = t[b & 0xF]
-        high = t.repeat_interleave(16)   # high[b] = t[b >> 4]
+        low = t.repeat(16) # low[b] = t[b & 0xF]
+        high = t.repeat_interleave(16) # high[b] = t[b >> 4]
         _FP4_BYTE_TABLE = torch.stack([low, high], dim=1).contiguous()
     return _FP4_BYTE_TABLE
 
@@ -77,14 +77,14 @@ def _dequant_fp8(q: torch.Tensor, fmt: int) -> torch.Tensor:
     """Bit-exact e4m3/e5m2 dequant (uint8 -> float32)."""
     q = q.to(torch.int32)
     sign = (q >> 7) & 1
-    if fmt == 2:  # e5m2
+    if fmt == 2: # e5m2
         exp = (q >> 2) & 0x1F
         mant = q & 0x3
         normal = (1.0 + mant.float() / 4.0) * torch.pow(2.0, exp.float() - 15.0)
         subnormal = mant.float() * (2.0 ** -16.0)
         special = torch.where(mant == 0, float("inf"), float("nan"))
         max_exp = 31
-    else:  # e4m3
+    else: # e4m3
         exp = (q >> 3) & 0xF
         mant = q & 0x7
         normal = (1.0 + mant.float() / 8.0) * torch.pow(2.0, exp.float() - 7.0)
@@ -102,10 +102,10 @@ def _scale_row(scale_table, row: int, num_kv_heads: int, head_size: int):
         return 1.0
     s = scale_table[row].float()
     if s.numel() == num_kv_heads:
-        return s[:, None, None]  # per-head row [H]
-    s = s.reshape(num_kv_heads, -1)  # [H, G] or [H, head]
+        return s[:, None, None] # per-head row [H]
+    s = s.reshape(num_kv_heads, -1) # [H, G] or [H, head]
     if s.shape[1] == head_size:
-        return s[:, None, :]  # per-element row
+        return s[:, None, :] # per-element row
     groups = s.shape[1]
     return s.repeat_interleave(head_size // groups, dim=1)[:, None, :]
 
@@ -142,7 +142,7 @@ def _dequant_prefix_torch(k_cache, v_cache, block_tables, precision_table,
     n_blk = (context_len + block_size - 1) // block_size
     bids = block_tables[seq_idx, :n_blk]
     num_blocks = precision_table.numel()
-    scalar_bytes = 2  # lossless storage is fp16/bf16
+    scalar_bytes = 2 # lossless storage is fp16/bf16
     k_out = torch.empty(n_blk, num_kv_heads, block_size, head_size,
                         dtype=torch.float32, device=k_cache.device)
     v_out = torch.empty_like(k_out)
@@ -260,8 +260,8 @@ class TileGenPSPKVAttentionImpl(AttentionImpl[TileGenPSPKVAttentionMetadata]):
             # Profiling run: no metadata yet.
             return output.fill_(0)
 
-        # Ensure the fork's PSP-KV extension (torch.ops.psp_kv.*) is loaded
-        # before any runner-side quantize calls — mirrors PSP_KV's forward,
+# Ensure the fork's PSP-KV extension (torch.ops.psp_kv.*) is loaded
+# before any runner-side quantize calls — mirrors PSP_KV's forward,
         # which locates the op namespace before prefill dispatch.
         if getattr(self, "_psp_ops", None) is None:
             self._psp_ops = _fork_module()._get_psp_kv_ops()
@@ -337,7 +337,7 @@ class TileGenPSPKVAttentionImpl(AttentionImpl[TileGenPSPKVAttentionMetadata]):
         assert context_lens.dtype == torch.int32 and context_lens.is_contiguous()
         assert block_tables.is_contiguous()
 
-        # Decode write-back (mirrors PSP_KV): quantize the current token into
+# Decode write-back (mirrors PSP_KV): quantize the current token into
         # its cache slot before attention, so context_lens tokens are attended.
         slot_mapping = getattr(meta, "slot_mapping", None)
         if slot_mapping is not None and key is not None and value is not None \
@@ -348,10 +348,10 @@ class TileGenPSPKVAttentionImpl(AttentionImpl[TileGenPSPKVAttentionMetadata]):
                 getattr(meta, "format_generation", 1),
             )
 
-        # Batched Triton fast path: homogeneous precision, one launch for all
-        # requests (fused per-block dequant + attention).  Mixed-precision
-        # batches fall through to the per-request torch dequant loop.  The
-        # homogeneity check is cached on the precision table's version counter
+# Batched Triton fast path: homogeneous precision, one launch for all
+# requests (fused per-block dequant + attention). Mixed-precision
+# batches fall through to the per-request torch dequant loop. The
+# homogeneity check is cached on the precision table's version counter
         # to avoid a GPU->CPU sync on every decode step.
         p_key = (precision_table.data_ptr(), precision_table._version)
         if getattr(self, "_p0_key", None) == p_key:
@@ -395,7 +395,7 @@ class TileGenPSPKVAttentionImpl(AttentionImpl[TileGenPSPKVAttentionMetadata]):
                     import traceback
 
                     traceback.print_exc()
-                pass  # fall through to the reference loop
+                pass # fall through to the reference loop
 
         for r in range(num_reqs):
             seq = int(context_lens[r].item())
@@ -412,7 +412,7 @@ class TileGenPSPKVAttentionImpl(AttentionImpl[TileGenPSPKVAttentionMetadata]):
             if ratio > 1:
                 k4 = k4.repeat_interleave(ratio, dim=1)
                 v4 = v4.repeat_interleave(ratio, dim=1)
-            q4 = query[r].unsqueeze(0).unsqueeze(2)  # [1, H, 1, D]
+            q4 = query[r].unsqueeze(0).unsqueeze(2) # [1, H, 1, D]
             out_r = F.scaled_dot_product_attention(
                 q4, k4, v4, is_causal=False, scale=self.scale
             )

@@ -54,7 +54,7 @@ class ScheduleCodesignEngine(SynthesisEngine):
                 if not (r.compiled and r.correct and r.device_time_us is not None):
                     continue
                 if r.device_time_us < best_time:
-                    # Persist the verified rewrite rule (before -> after) plus the
+# Persist the verified rewrite rule (before -> after) plus the
                     # winning knobs config so other strategies can warm-start.
                     kb.record_certified(
                         {

@@ -80,7 +80,7 @@ class PagedKVLayout:
     block table (``block_tables``) and an in-page offset.
     """
 
-    block_size: int          # tokens per page
+    block_size: int # tokens per page
     num_kv_heads: int
     head_dim: int
 
@@ -129,7 +129,7 @@ class TensorSpec:
     dtype: str
     shape: Tuple[ShapeDim, ...]
     layout: LayoutSpec
-    quant: object | None = None  # QuantSpec | None (avoid import cycle at type level)
+    quant: object | None = None # QuantSpec | None (avoid import cycle at type level)
 
     @property
     def ndim(self) -> int:

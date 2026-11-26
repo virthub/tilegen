@@ -20,7 +20,7 @@ class TestContiguous:
         assert c.offset((1, 2, 3)) == 23
 
     def test_explicit_strides(self):
-        c = ContiguousLayout((2, 3), strides=(1, 2))  # column-major-ish
+        c = ContiguousLayout((2, 3), strides=(1, 2)) # column-major-ish
         assert c.offset((1, 2)) == 1 + 2 * 2
 
     def test_rejects_symbolic_without_strides(self):

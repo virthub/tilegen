@@ -18,7 +18,7 @@ __all__ = [
 def tilelang_available() -> bool:
     """True if the TileLang FA4 backend is importable."""
     try:
-        import tilelang  # noqa: F401
+        import tilelang # noqa: F401
 
         return True
     except Exception:
@@ -44,17 +44,30 @@ def dense_attention(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor,
 
         return F.scaled_dot_product_attention(q, k, v, is_causal=is_causal, scale=scale)
 
-    try:
-        from tilegen.ops.flash_tilelang import flash_attention_tilelang_forward
+    import torch
 
-        return flash_attention_tilelang_forward(q, k, v, is_causal=is_causal)[0]
-    except Exception:
-        pass
+    cap = torch.cuda.get_device_capability() if (
+        torch.cuda.is_available() and q.is_cuda) else (0, 0)
+
+# FA4 (tcgen05/TMEM) is Blackwell-only (sm_100+); on older devices the
+# TileLang path must never be attempted (it compiles but runs at
+    # near-zero throughput there).
+    if cap >= (10, 0):
+        try:
+            from tilegen.ops.flash_tilelang import flash_attention_tilelang_forward
+
+            return flash_attention_tilelang_forward(q, k, v, is_causal=is_causal)[0]
+        except Exception:
+            pass
 
     if q.dtype == torch.bfloat16:
         from tilegen.ops.flash import flash_attention_fa3_forward, flash_attention_forward
 
-        fn = flash_attention_fa3_forward if q.shape[-1] >= 128 else flash_attention_forward
+        # FA3 (wgmma warp-spec) is Hopper-only (sm_90); Ada and Ampere use FA2.
+        if (9, 0) <= cap < (10, 0) and q.shape[-1] >= 128:
+            fn = flash_attention_fa3_forward
+        else:
+            fn = flash_attention_forward
         out, _, _ = fn(q, k, v, is_causal=is_causal, sm_scale=scale)
         return out
 

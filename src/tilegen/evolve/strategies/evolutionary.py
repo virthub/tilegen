@@ -32,10 +32,13 @@ class EvolutionaryEngine(SynthesisEngine):
         budget: dict[str, int] | None = None,
     ) -> KernelCandidate:
         budget = budget or {"generations": 4}
+        from tilegen.evolve.noise import campaign_noise, gate_value
+
+        noise_floor, _ref_stats = campaign_noise(evaluator, initial_kernel)
         generations = budget.get("generations", 4)
         rng = random.Random(self._seed)
 
-        # Seed population with the initial kernel plus independent mutations of
+# Seed population with the initial kernel plus independent mutations of
         # *the seed* (not a chain drifting away from it).
         population: list[KernelCandidate] = [
             KernelCandidate("pop0", [], initial_kernel, rationale="seed")

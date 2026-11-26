@@ -30,6 +30,9 @@ class GoalLoopEngine(SynthesisEngine):
         budget: dict[str, int] | None = None,
     ) -> KernelCandidate:
         budget = budget or {"iterations": 10}
+        from tilegen.evolve.noise import campaign_noise, gate_value
+
+        noise_floor, _ref_stats = campaign_noise(evaluator, initial_kernel)
         iterations = budget.get("iterations", 10)
         rng = random.Random(self._seed)
 
@@ -45,7 +48,10 @@ class GoalLoopEngine(SynthesisEngine):
             )
             results = evaluator.evaluate([cand], target, sealed_ref_id)
             r = results[0]
-            if r.compiled and r.correct and r.device_time_us is not None and r.device_time_us < best_time:
+            gate = gate_value(noise_floor, 1.05 if it == 0 else 1.0)
+            if (r.compiled and r.correct and r.device_time_us is not None
+                    and r.device_time_us < best_time
+                    and (r.speedup_vs_ref or 0.0) >= gate):
                 best_kernel = cand.vtm_ir
                 best_time = r.device_time_us
 

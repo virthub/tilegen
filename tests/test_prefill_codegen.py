@@ -94,7 +94,7 @@ def test_fa3_ws_codegen_compiles_and_runs():
     assert kernel.topology.grid.mode.value == "persistent_sm"
     assert kernel.topology.roles.phase_mode.value == "ping_pong"
     src = get_backend("triton").lower(kernel, get_target("sm_120"))
-    assert "warp_specialize=True" in src  # automatic warp specialization emitted
+    assert "warp_specialize=True" in src # automatic warp specialization emitted
     mod = _load_module(src, "gen_fa3")
 
     torch.manual_seed(0)

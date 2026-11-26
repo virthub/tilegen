@@ -1,0 +1,19 @@
+# Zero-evolver meta campaign (./run.sh --evolve --strategy zero):
+# champion baseline -> FD first generation -> halving -> LCB confirmation.
+strategy: zero
+target: sm_90a
+budget:
+  meta_generations: 2
+  meta_candidates: 3
+  meta_seeds: 2
+  meta_confirm_runs: 3
+  inner_budget:
+    generations: 1
+    candidates_per_generation: 2
+curriculum:
+  operator_class: attention
+  thresholds:
+    N_stall: 2
+    N_gate: 2
+knowledge_store:
+  dir: conf/kb

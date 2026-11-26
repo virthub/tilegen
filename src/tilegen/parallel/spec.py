@@ -9,9 +9,9 @@ from enum import Enum
 
 
 class CommPattern(Enum):
-    ALL_GATHER = "all_gather"   # gather K/V -> local attention -> (optional) reduce-scatter
-    RING = "ring"               # in-kernel P2P ring (RingAttention; not yet lowered)
-    TREE = "tree"               # tree reduce for softmax statistics
+    ALL_GATHER = "all_gather" # gather K/V -> local attention -> (optional) reduce-scatter
+    RING = "ring" # in-kernel P2P ring (RingAttention; not yet lowered)
+    TREE = "tree" # tree reduce for softmax statistics
 
 
 @dataclass(frozen=True)

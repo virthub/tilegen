@@ -38,8 +38,8 @@ class TileGenAttentionBackend(AttentionBackend):
     supported_dtypes: ClassVar[list[torch.dtype]] = [torch.float16, torch.bfloat16]
     supported_kv_cache_dtypes: ClassVar[list[str]] = ["auto", "float16", "bfloat16"]
 
-    # MRV2 writes the KV cache separately (``torch.ops.vllm.unified_kv_cache_update``)
-    # before calling ``forward``; this backend only *reads* the cache during decode.
+# MRV2 writes the KV cache separately (``torch.ops.vllm.unified_kv_cache_update``)
+# before calling ``forward``; this backend only *reads* the cache during decode.
     # (Matches the flash_attn / triton_attn / flashinfer convention.)
     forward_includes_kv_cache_update: bool = False
 
@@ -178,7 +178,7 @@ class TileGenAttentionImpl(AttentionImpl):
         block_size = kv_cache.shape[2]
         hs = self.head_size
 
-        # vLLM cache layout: [num_blocks, num_kv_heads, block_size, 2*hs].
+# vLLM cache layout: [num_blocks, num_kv_heads, block_size, 2*hs].
         # Split into K/V and permute to [num_blocks, block_size, num_kv_heads, hs].
         kc = kv_cache[:, :, :, :hs].permute(0, 2, 1, 3).contiguous()
         vc = kv_cache[:, :, :, hs:].permute(0, 2, 1, 3).contiguous()
@@ -213,9 +213,9 @@ class TileGenAttentionImpl(AttentionImpl):
             if ratio > 1:
                 k = k.repeat_interleave(ratio, dim=1)
                 v = v.repeat_interleave(ratio, dim=1)
-            k = k.permute(1, 0, 2).unsqueeze(0)          # [1, H, seq, D]
+            k = k.permute(1, 0, 2).unsqueeze(0) # [1, H, seq, D]
             v = v.permute(1, 0, 2).unsqueeze(0)
-            qr = query[r].unsqueeze(0).unsqueeze(2)      # [1, H, 1, D]
+            qr = query[r].unsqueeze(0).unsqueeze(2) # [1, H, 1, D]
             out_r = F.scaled_dot_product_attention(qr, k, v, is_causal=False, scale=self.scale)
             output[r] = out_r.squeeze(0).squeeze(1)
         return output

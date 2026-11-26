@@ -68,6 +68,15 @@ All commands execute directly through `run.sh`, which enforces `uv run --no-sync
 | `./run.sh --benchmark pspkv_tilegen_bench …` | Fork-dependent vLLM-PSP-KV harnesses (set `TILEGEN_BENCH_PYTHON` / `TILEGEN_BENCH_PYTHONPATH` overrides) |
 | `./run.sh --clean` (add `--clean-all` for `.venv/`) | Clean dynamically generated files |
 
+### ⚙️ Codegen tiers
+
+The Triton and TileLang backends dispatch four **runnable** VTM patterns to
+specialized kernels (`dense_fa2`, `fa3` warp-spec, paged `decode`, paged
+`prefill`); any other topology (e.g. `ring_step`) lowers to an explicitly
+marked **sketch tier** — the generated source carries
+`# SKETCH TIER - NOT RUNNABLE` and `TILEGEN_STRICT_CODEGEN=1` turns the
+sketch path into an error so skeleton code is never consumed as a kernel.
+
 ### 🧱 VTM IR
 
 The Virtual Tile Machine IR is the single source of truth: declare a kernel, lower

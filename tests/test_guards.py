@@ -15,15 +15,15 @@ from tilegen.ops.guards import (
 
 class TestQuantAlignment:
     def test_block_aligned_ok(self):
-        check_quant_alignment(64, 128, QuantSpec.nvfp4())  # block 16, pack 2
+        check_quant_alignment(64, 128, QuantSpec.nvfp4()) # block 16, pack 2
 
     def test_block_misaligned(self):
         with pytest.raises(BoundaryError):
-            check_quant_alignment(40, 128, QuantSpec.nvfp4())  # 40 % 16 != 0
+            check_quant_alignment(40, 128, QuantSpec.nvfp4()) # 40 % 16 != 0
 
     def test_pack_misaligned(self):
         with pytest.raises(BoundaryError):
-            check_quant_alignment(64, 127, QuantSpec.nvfp4())  # 127 % 2 != 0
+            check_quant_alignment(64, 127, QuantSpec.nvfp4()) # 127 % 2 != 0
 
 
 class TestValidateAttention:

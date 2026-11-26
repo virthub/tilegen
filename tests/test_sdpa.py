@@ -67,6 +67,60 @@ def test_sdpa_kernel_falls_back_for_fp32(tensors):
     assert (out - ref).abs().max().item() < 1e-3
 
 
+
+
+def test_sdpa_kernel_is_thread_isolated(tensors):
+    """A context in one thread must not route calls made in another."""
+    import threading
+
+    import torch.nn.functional as F
+
+    import tilegen
+    from tilegen.runtime.sdpa import dispatch_count
+
+    q, k, v = tensors
+    ref = F.scaled_dot_product_attention(q, k, v, is_causal=True)
+    before = dispatch_count()
+    results = {}
+
+    def inside():
+        with tilegen.sdpa_kernel():
+            results["inside"] = F.scaled_dot_product_attention(
+                q, k, v, is_causal=True)
+        # The context has exited: this call must be native again.
+        results["after"] = F.scaled_dot_product_attention(q, k, v, is_causal=True)
+
+    def outside():
+        # Runs concurrently with the context open in `inside`.
+        results["outside"] = F.scaled_dot_product_attention(
+            q, k, v, is_causal=True)
+
+    t1 = threading.Thread(target=inside)
+    t2 = threading.Thread(target=outside)
+    t1.start(); t2.start(); t1.join(); t2.join()
+
+    assert dispatch_count() == before + 1, "only the in-context call routes"
+    assert (results["inside"] - ref).abs().max().item() < 5e-2
+    assert (results["after"] - ref).abs().max().item() < 5e-2
+    assert (results["outside"] - ref).abs().max().item() < 5e-2
+
+
+def test_sdpa_kernel_is_reentrant(tensors):
+    import torch.nn.functional as F
+
+    import tilegen
+    from tilegen.runtime.sdpa import dispatch_count
+
+    q, k, v = tensors
+    before = dispatch_count()
+    with tilegen.sdpa_kernel():
+        with tilegen.sdpa_kernel():
+            out = F.scaled_dot_product_attention(q, k, v, is_causal=True)
+    assert dispatch_count() == before + 1
+    ref = F.scaled_dot_product_attention(q, k, v, is_causal=True)
+    assert (out - ref).abs().max().item() < 5e-2
+
+
 def test_meta_kernel_registered(tensors):
     from tilegen.runtime.sdpa import _register_ops
 

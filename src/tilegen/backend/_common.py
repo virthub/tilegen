@@ -62,6 +62,29 @@ def header(kernel: VTMKernel, target, backend: str) -> str:
     )
 
 
+SKETCH_BANNER = "# SKETCH TIER - NOT RUNNABLE"
+
+
+def sketch_reason(kernel: VTMKernel) -> str:
+    """Why a VTM has no pattern-matched codegen (used in the banner)."""
+    from tilegen.ir.ops import RingStepOp
+
+    if any(isinstance(op, RingStepOp) for op in kernel.body):
+        return "ring_step has no lowering backend"
+    return "no pattern-matched codegen for this VTM topology"
+
+
+def guard_sketch(kernel: VTMKernel) -> None:
+    """Raise in strict mode so skeleton code is never consumed as a kernel."""
+    import os
+
+    if os.environ.get("TILEGEN_STRICT_CODEGEN") == "1":
+        raise RuntimeError(
+            f"{SKETCH_BANNER} - {sketch_reason(kernel)} "
+            "(TILEGEN_STRICT_CODEGEN=1)")
+    return None
+
+
 __all__ = [
     "shape_str",
     "var",
@@ -69,4 +92,7 @@ __all__ = [
     "TILELANG_DTYPE",
     "TRITON_DTYPE",
     "header",
+    "SKETCH_BANNER",
+    "sketch_reason",
+    "guard_sketch",
 ]

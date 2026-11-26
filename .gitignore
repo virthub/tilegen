@@ -31,3 +31,10 @@ conf/kb/autotuned.json
 
 # Third-party sources fetched by install.sh (--with-vllm-pspkv)
 third_party/
+
+# Meta-evolver runtime artifacts (campaign records, champion cache, policy
+# memory, review parking, CAS registry, rejections, diagnostic panels)
+conf/kb/meta/
+conf/kb/current_reference.json
+conf/kb/rejections.json
+conf/kb/metrics.json

@@ -38,8 +38,8 @@ class GridTopology:
 
     mode: GridMode = GridMode.DATA_PARALLEL
     raster: RasterOrder = RasterOrder.ROW_MAJOR
-    split: int = 1                      # SPLIT_K / SPLIT_KV reduction factor
-    cta_group: Literal[1, 2] = 1        # 2 => Blackwell 2-CTA cooperative MMA
+    split: int = 1 # SPLIT_K / SPLIT_KV reduction factor
+    cta_group: Literal[1, 2] = 1 # 2 => Blackwell 2-CTA cooperative MMA
 
     def __post_init__(self) -> None:
         if self.split <= 0:
@@ -103,11 +103,11 @@ class TacticalKnobs:
     tile_n: int = 128
     tile_k: int = 64
     pipeline_stages: int = 2
-    swizzle_mode: str = "NONE"           # NONE / B32 / B64 / B128
+    swizzle_mode: str = "NONE" # NONE / B32 / B64 / B128
     async_wait_depth: int = 0
     max_registers_per_thread: int = 168
-    exp_emulation_ratio: float = 0.0     # hybrid FMA/SFU exp2 split (FA4)
-    rescale_threshold: float = 0.0       # conditional online-softmax rescaling
+    exp_emulation_ratio: float = 0.0 # hybrid FMA/SFU exp2 split (FA4)
+    rescale_threshold: float = 0.0 # conditional online-softmax rescaling
 
     def __post_init__(self) -> None:
         if self.tile_m <= 0 or self.tile_n <= 0 or self.tile_k <= 0:

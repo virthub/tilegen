@@ -16,13 +16,13 @@ def _paged_decode_kernel(
     HEAD_DIM: tl.constexpr, BLOCK_SIZE: tl.constexpr, MAX_BLOCKS: tl.constexpr,
     IS_BF16: tl.constexpr,
 ):
-    r = tl.program_id(0)                       # one program per request
+    r = tl.program_id(0) # one program per request
     seq = tl.load(seq_lens + r)
     num_blocks = (seq + BLOCK_SIZE - 1) // BLOCK_SIZE
 
     offs_d = tl.arange(0, HEAD_DIM)
     offs_s = tl.arange(0, BLOCK_SIZE)
-    offs_g = tl.arange(0, RATIO)               # group-local head index
+    offs_g = tl.arange(0, RATIO) # group-local head index
 
     q_base = Q + r * (NUM_HEADS * HEAD_DIM)
     o_base = O + r * (NUM_HEADS * HEAD_DIM)
@@ -44,7 +44,7 @@ def _paged_decode_kernel(
                 k_base + offs_s[:, None] * (NUM_KV_HEADS * HEAD_DIM) + hkv * HEAD_DIM + offs_d[None, :],
                 mask=mask[:, None], other=0.0,
             )
-            qk = tl.dot(q, tl.trans(k)) * sm_scale          # [RATIO, BLOCK_SIZE]
+            qk = tl.dot(q, tl.trans(k)) * sm_scale # [RATIO, BLOCK_SIZE]
             qk = tl.where(mask[None, :], qk, float("-inf"))
 
             m_ij = tl.maximum(m, tl.max(qk, axis=1))
@@ -133,14 +133,14 @@ def _paged_decode_int4_kernel(
     offs_g = tl.arange(0, RATIO)
 
     D2: tl.constexpr = HEAD_DIM // 2
-    NG: tl.constexpr = HEAD_DIM // GROUP_SIZE             # groups per head
-    GS2: tl.constexpr = GROUP_SIZE // 2                   # group size in packed dim
-    offs_group = offs_d2 // GS2                           # [D2] group index (packed)
+    NG: tl.constexpr = HEAD_DIM // GROUP_SIZE # groups per head
+    GS2: tl.constexpr = GROUP_SIZE // 2 # group size in packed dim
+    offs_group = offs_d2 // GS2 # [D2] group index (packed)
 
     for hkv in range(0, NUM_KV_HEADS):
         qb = Q + r * (NUM_HEADS * HEAD_DIM) + (hkv * RATIO + offs_g)[:, None] * HEAD_DIM
-        q_even = tl.load(qb + offs_d2[None, :] * 2)        # [RATIO, D//2] even
-        q_odd = tl.load(qb + offs_d2[None, :] * 2 + 1)     # [RATIO, D//2] odd
+        q_even = tl.load(qb + offs_d2[None, :] * 2) # [RATIO, D//2] even
+        q_odd = tl.load(qb + offs_d2[None, :] * 2 + 1) # [RATIO, D//2] odd
         m = tl.full([RATIO], float("-inf"), dtype=tl.float32)
         l = tl.zeros([RATIO], dtype=tl.float32)
         acc_even = tl.zeros([RATIO, D2], dtype=tl.float32)
@@ -159,7 +159,7 @@ def _paged_decode_int4_kernel(
                 K_scale + bid * (BLOCK_SIZE * NUM_KV_HEADS * NG)
                 + offs_s[:, None] * (NUM_KV_HEADS * NG) + hkv * NG + offs_group[None, :],
                 mask=mask[:, None], other=0.0,
-            ).to(tl.float32)                                # [BLOCK_SIZE, D2] gather
+            ).to(tl.float32) # [BLOCK_SIZE, D2] gather
             k_lo_dq = ((k_lo.to(tl.float32) - 8.0) * sc).to(tl.float16)
             k_hi_dq = ((k_hi.to(tl.float32) - 8.0) * sc).to(tl.float16)
             qk = (tl.dot(q_even, tl.trans(k_lo_dq)) + tl.dot(q_odd, tl.trans(k_hi_dq))) * sm_scale
@@ -273,7 +273,7 @@ def _paged_decode_tokens_kernel(
             toks = tl.load(
                 req_to_token + r * MAX_CTX + blk * BLOCK_SIZE + offs_s,
                 mask=mask, other=0,
-            )                                             # [BLOCK_SIZE] token indices
+            ) # [BLOCK_SIZE] token indices
 
             k = tl.load(
                 K_pool + toks[:, None] * (NUM_KV_HEADS * HEAD_DIM) + hkv * HEAD_DIM + offs_d[None, :],

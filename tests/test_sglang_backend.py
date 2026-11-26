@@ -57,7 +57,7 @@ def test_forward_decode_token_gather_matches_reference():
     num_tokens = num_reqs * max_ctx
     k_pool = torch.randn(num_tokens, Hkv, D, device="cuda", dtype=torch.float16)
     v_pool = torch.randn(num_tokens, Hkv, D, device="cuda", dtype=torch.float16)
-    pool = torch.stack([k_pool, v_pool], dim=1)          # [num_tokens, 2, Hkv, D]
+    pool = torch.stack([k_pool, v_pool], dim=1) # [num_tokens, 2, Hkv, D]
 
     req_to_token = torch.zeros(num_reqs, max_ctx, dtype=torch.int32, device="cuda")
     for r in range(num_reqs):

@@ -77,12 +77,18 @@ def candidate_from_dict(data: dict, verify: bool = True) -> KernelCandidate:
     )
 
 
-def propose_candidates(payload: Any, verify: bool = True) -> list[KernelCandidate]:
+def propose_candidates(
+    payload: Any,
+    verify: bool = True,
+    allow_code_override: bool = False,
+) -> list[KernelCandidate]:
     """Accept an external evolver's proposal payload.
 
     ``payload`` is either a dict like ``{"candidates": [...]}`` or a bare list
     of candidate dicts.  Each entry is validated (variant, backend, VTM IR);
-    errors carry the failing candidate index.
+    errors carry the failing candidate index.  Non-empty ``code_override``
+    entries are rejected unless ``allow_code_override`` is set (isolation
+    audit: kernel code must go through the VTM IR).
     """
     if isinstance(payload, dict):
         items = payload.get("candidates")
@@ -93,7 +99,10 @@ def propose_candidates(payload: Any, verify: bool = True) -> list[KernelCandidat
     out: list[KernelCandidate] = []
     for i, item in enumerate(items):
         try:
-            out.append(candidate_from_dict(item, verify=verify))
+            cand = candidate_from_dict(item, verify=verify)
+            if cand.code_override and not allow_code_override:
+                raise ValueError(f"candidate {i}: code_override not allowed")
+            out.append(cand)
         except (KeyError, TypeError, ValueError) as exc:
             raise ValueError(f"candidate {i} invalid: {exc}") from exc
     return out

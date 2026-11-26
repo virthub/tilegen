@@ -1,0 +1,21 @@
+# Example global configuration for TileGen (copy to conf/tilegen.yaml).
+#
+# The file is OPTIONAL: the core commands (compile / autotune / evolve /
+# verify / bench) work without it.  The api_config block enables LLM
+# features (meta-evolver policy proposals, agent strategies).
+#
+# Precedence per value: explicit overrides > this file > provider environment
+# variables (OPENAI_API_KEY/OPENAI_API_BASE, DEEPSEEK_API_KEY/DEEPSEEK_API_BASE,
+# OLLAMA_API_KEY/OLLAMA_API_BASE) > built-in defaults.
+#
+# Security: api_key is never logged; set it here, via environment variables,
+# or leave "not-needed" for local ollama.
+
+api_config:
+  provider: "ollama"                 # ollama | openai | deepseek | custom
+  model: "qwen3.5:27b"
+  api_key: "not-needed"              # prefer env vars for real keys
+  base_url: "http://localhost:11434/v1"
+  temperature: 0.2
+  max_tokens: 131072
+  timeout: 3600

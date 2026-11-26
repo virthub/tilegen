@@ -39,4 +39,4 @@ def test_verify_strict_speed_gate_reports():
     spec = AttentionSpec(kv_quant=QuantSpec.nvfp4())
     report = verify(spec, get_target("sm_90a"), speed_gate=1.0)
     summary = report.summary()
-    assert "speedup=" in summary  # speedup is always measured and reported
+    assert "speedup=" in summary # speedup is always measured and reported

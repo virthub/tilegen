@@ -22,8 +22,25 @@ ENGINES = {
 
 def get_engine(name: str):
     if name not in ENGINES:
-        raise KeyError(f"unknown strategy {name!r}; known: {sorted(ENGINES)}")
+        if name in _DYNAMIC:
+            import importlib
+
+            module_name, cls_name = _DYNAMIC[name]
+            mod = importlib.import_module(module_name)
+            register_engine(name, getattr(mod, cls_name))
+        else:
+            raise KeyError(
+                f"unknown strategy {name!r}; known: {sorted(ENGINES)} "
+                f"+ {sorted(_DYNAMIC)}"
+            )
     return ENGINES[name]()
+
+
+# Lazily imported strategy artifacts (registered on first use).
+_DYNAMIC = {
+    "zero": ("tilegen.evolve.zero", "ZeroEvolveEngine"),
+    "meta_evolver": ("tilegen.evolve.meta_evolver", "MetaEvolverEngine"),
+}
 
 
 def register_engine(name: str, engine_cls) -> None:

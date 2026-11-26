@@ -65,7 +65,7 @@ def _stage2_dispatch() -> StageResult:
     h = semantic_hash({"kernel": "probe"})
     detail = f"semantic_hash={h[:8]}…"
     try:
-        import torch  # noqa: F401
+        import torch # noqa: F401
 
         from tilegen.runtime.sdpa import _register_ops
 

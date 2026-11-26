@@ -27,7 +27,7 @@ class TestSearchSpace:
     def test_from_dict(self):
         space = SearchSpace.from_dict({"tile_m": [128], "tile_n": [128]})
         assert space.tile_m == [128]
-        assert space.pipeline_stages == (1, 2, 3, 4)  # default preserved
+        assert space.pipeline_stages == (1, 2, 3, 4) # default preserved
 
 
 class TestEstimates:
@@ -46,9 +46,9 @@ class TestPruning:
         quant = QuantSpec.nvfp4()
         spec = AttentionSpec(head_dim=64, kv_quant=quant)
         cfgs = [
-            TuneConfig(128, 128, 64),   # aligned -> kept
-            TuneConfig(128, 128, 40),   # 40 % 16 != 0 -> pruned
-            TuneConfig(128, 127, 64),   # tile_n 127 % 2 != 0 -> pruned
+            TuneConfig(128, 128, 64), # aligned -> kept
+            TuneConfig(128, 128, 40), # 40 % 16 != 0 -> pruned
+            TuneConfig(128, 127, 64), # tile_n 127 % 2 != 0 -> pruned
         ]
         kept = prune_configs(cfgs, spec, get_target("sm_90a"), quant=quant)
         kept_k = {c.tile_k for c in kept}
@@ -58,7 +58,7 @@ class TestPruning:
         assert 127 not in kept_n
 
     def test_smem_budget(self):
-        quant = QuantSpec.int8_kv()  # block 64
+        quant = QuantSpec.int8_kv() # block 64
         spec = AttentionSpec(head_dim=64, kv_quant=quant)
         target = get_target("sm_90a")
         # A huge config should exceed the smem budget and be pruned.

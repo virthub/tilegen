@@ -7,7 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field, replace
 from typing import Optional
 
-# Bits per element for every supported storage encoding.  Anything below 8
+# Bits per element for every supported storage encoding. Anything below 8
 # bits is "sub-byte" and requires physical packing.
 _BITS_PER_ELEMENT: dict[str, int] = {
     "int1": 1,
@@ -70,7 +70,7 @@ class QuantSpec:
         if self.tensor_scale_dtype is not None and self.tensor_scale_dtype not in _BITS_PER_ELEMENT:
             raise ValueError(f"Unknown tensor_scale_dtype {self.tensor_scale_dtype!r}")
 
-        # A sub-byte dtype must pack multiple elements per byte; derive the
+# A sub-byte dtype must pack multiple elements per byte; derive the
         # pack factor from the encoding when it was left unspecified.
         expected_pack = 8 // self.bits_per_element if self.bits_per_element < 8 else 1
         if self.pack_factor is None:
@@ -238,7 +238,7 @@ class QuantSpec:
 def _bits(dtype: str) -> int:
     try:
         return _BITS_PER_ELEMENT[dtype]
-    except KeyError as exc:  # pragma: no cover - guarded by QuantSpec.__post_init__
+    except KeyError as exc: # pragma: no cover - guarded by QuantSpec.__post_init__
         raise ValueError(f"Unknown dtype {dtype!r}") from exc
 
 

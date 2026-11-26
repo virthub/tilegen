@@ -68,7 +68,7 @@ def test_parallel_executor_unsharded_falls_through():
     q = torch.randn(2, 8, 512, 64, device="cuda", dtype=torch.bfloat16)
     k = torch.randn_like(q)
     v = torch.randn_like(q)
-    ex = ParallelExecutor(ParallelismSpec())  # unsharded
+    ex = ParallelExecutor(ParallelismSpec()) # unsharded
     out = ex.attention(q, k, v, is_causal=True)
     assert out.shape == q.shape
     assert out.dtype == torch.bfloat16
@@ -83,7 +83,7 @@ def test_parallel_executor_all_gather_orchestration(monkeypatch):
     calls = {}
 
     def fake_all_gather(t, dim=0, group=None):
-        return torch.cat([t, t], dim=dim)  # simulate 2 ranks
+        return torch.cat([t, t], dim=dim) # simulate 2 ranks
 
     monkeypatch.setattr(ex_mod.collectives, "all_gather", fake_all_gather)
 
@@ -97,7 +97,7 @@ def test_parallel_executor_all_gather_orchestration(monkeypatch):
     k = torch.randn(1, 4, 8, 16)
     v = torch.randn(1, 4, 8, 16)
     ex.attention(q, k, v, is_causal=True)
-    assert calls["k_shape"] == (1, 4, 16, 16)   # seq dim doubled by the gather
+    assert calls["k_shape"] == (1, 4, 16, 16) # seq dim doubled by the gather
     assert calls["v_shape"] == (1, 4, 16, 16)
 
 

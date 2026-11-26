@@ -22,8 +22,8 @@ def _flashattn(
     batch, heads, seq_q, seq_kv, dim, is_causal,
     block_M=128, block_N=128, num_stages=1, threads=256, use_bf16=False,
 ):
-    scale = (1.0 / dim) ** 0.5 * 1.44269504  # log2(e)
-    sm_scale = (1.0 / dim) ** 0.5             # natural-log softmax scale (FA2 M)
+    scale = (1.0 / dim) ** 0.5 * 1.44269504 # log2(e)
+    sm_scale = (1.0 / dim) ** 0.5 # natural-log softmax scale (FA2 M)
     dtype = T.bfloat16 if use_bf16 else T.float16
     accum_dtype = T.float32
     past_len = seq_kv - seq_q

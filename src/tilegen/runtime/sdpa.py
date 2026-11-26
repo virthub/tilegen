@@ -5,10 +5,13 @@
 from __future__ import annotations
 
 import contextlib
+import threading
 from typing import Iterator
 
 _REGISTERED = False
 _DISPATCH_COUNT = 0
+_ORIGINAL_SDPA = None
+_local = threading.local()
 
 
 def _register_ops() -> None:
@@ -57,38 +60,58 @@ def _register_ops() -> None:
     _REGISTERED = True
 
 
+def _ensure_routed() -> None:
+    """Install the routing wrapper exactly once (thread-aware).
+
+    The wrapper consults a thread-local depth counter, so concurrent
+    ``sdpa_kernel`` contexts in different threads never interfere and the
+    original function reference is captured once (no patch/unpatch races).
+    """
+    global _ORIGINAL_SDPA
+
+    import torch
+    import torch.nn.functional as F
+
+    if _ORIGINAL_SDPA is None:
+        _ORIGINAL_SDPA = F.scaled_dot_product_attention
+
+        def routed(q, k, v, attn_mask=None, dropout_p=0.0, is_causal=False,
+                   scale=None, **kw):
+            del kw
+            depth = getattr(_local, "depth", 0)
+            if (
+                depth > 0
+                and attn_mask is None
+                and dropout_p == 0.0
+                and q.is_cuda
+                and q.dtype == torch.bfloat16
+                and q.dim() == 4
+            ):
+                return torch.ops.tilegen.sdpa(q, k, v, is_causal, scale)
+            return _ORIGINAL_SDPA(q, k, v, attn_mask=attn_mask,
+                                  dropout_p=dropout_p, is_causal=is_causal,
+                                  scale=scale)
+
+        F.scaled_dot_product_attention = routed
+
+
 @contextlib.contextmanager
 def sdpa_kernel(*args, **kwargs) -> Iterator[None]:
     """Route ``F.scaled_dot_product_attention`` through ``tilegen::sdpa``.
 
-    Within this context, dense CUDA bf16 attention calls dispatch to the
-    TileGen FA2 kernel; all other shapes/dtypes delegate to the native PyTorch
-    SDPA backends unchanged.
+    Within this context (in the calling thread only), dense CUDA bf16
+    attention calls dispatch to the TileGen FA2 kernel; all other
+    shapes/dtypes delegate to the native PyTorch SDPA backends unchanged.
+    The context is reentrant (nested contexts share the depth counter).
     """
-    import torch
-    import torch.nn.functional as F
-
+    del args, kwargs
     _register_ops()
-    original = F.scaled_dot_product_attention
-
-    def routed(q, k, v, attn_mask=None, dropout_p=0.0, is_causal=False, scale=None, **kw):
-        del kw
-        if (
-            attn_mask is None
-            and dropout_p == 0.0
-            and q.is_cuda
-            and q.dtype == torch.bfloat16
-            and q.dim() == 4
-        ):
-            return torch.ops.tilegen.sdpa(q, k, v, is_causal, scale)
-        return original(q, k, v, attn_mask=attn_mask, dropout_p=dropout_p,
-                        is_causal=is_causal, scale=scale)
-
-    F.scaled_dot_product_attention = routed
+    _ensure_routed()
+    _local.depth = getattr(_local, "depth", 0) + 1
     try:
         yield
     finally:
-        F.scaled_dot_product_attention = original
+        _local.depth -= 1
 
 
 def dispatch_count() -> int:

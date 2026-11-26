@@ -14,10 +14,10 @@ ShapeDim = Union[int, "SymbolicDim"]
 class MemoryTier(Enum):
     """The four functional VTM memory tiers."""
 
-    GLOBAL = "global"              # High-capacity off-chip memory (HBM/GM)
-    SCRATCHPAD = "scratchpad"      # Software-managed on-chip staging (SMEM/LDS/UB)
-    COMPUTE_INPUT = "compute_input"  # Operand staging feeding matrix units (REG/L0A,L0B)
-    ACCUMULATOR = "accumulator"    # High-precision accumulation (TMEM/AGPR/L0C)
+    GLOBAL = "global" # High-capacity off-chip memory (HBM/GM)
+    SCRATCHPAD = "scratchpad" # Software-managed on-chip staging (SMEM/LDS/UB)
+    COMPUTE_INPUT = "compute_input" # Operand staging feeding matrix units (REG/L0A,L0B)
+    ACCUMULATOR = "accumulator" # High-precision accumulation (TMEM/AGPR/L0C)
 
 
 class DataType(Enum):
@@ -70,7 +70,7 @@ class SymbolicDim:
             raise ValueError(f"{value} > max {self.max} for dim {self.name}")
         return SymbolicDim(self.name, value=value, min=self.min, max=self.max)
 
-    def __str__(self) -> str:  # pragma: no cover - readability only
+    def __str__(self) -> str: # pragma: no cover - readability only
         return self.name if self.value is None else str(self.value)
 
 
@@ -82,7 +82,7 @@ class VTMBuffer:
     tier: MemoryTier
     shape: Tuple[ShapeDim, ...]
     dtype: str = "fp32"
-    swizzle: Optional[str] = None  # NONE / B32 / B64 / B128
+    swizzle: Optional[str] = None # NONE / B32 / B64 / B128
 
     def __post_init__(self) -> None:
         if not self.name:

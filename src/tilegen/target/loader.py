@@ -12,8 +12,8 @@ from tilegen.target.spec import TargetSpec
 
 def _load_yaml(path: Path) -> dict:
     try:
-        import yaml  # type: ignore
-    except ImportError as exc:  # pragma: no cover - pyyaml is a core dependency
+        import yaml # type: ignore
+    except ImportError as exc: # pragma: no cover - pyyaml is a core dependency
         raise RuntimeError("PyYAML is required to load YAML profiles") from exc
     with path.open("r", encoding="utf-8") as f:
         data = yaml.safe_load(f)

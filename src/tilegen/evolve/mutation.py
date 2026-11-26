@@ -48,22 +48,33 @@ def _mutate_field(d: dict, field: str, rng: random.Random) -> None:
         d["rescale_threshold"] = round(max(0.0, min(1.0, d["rescale_threshold"] + rng.choice([-0.1, 0.1]))), 2)
 
 
-def mutate_knobs(knobs: TacticalKnobs, rng: random.Random, bias: list[str] | None = None) -> TacticalKnobs:
+def mutate_knobs(
+    knobs: TacticalKnobs,
+    rng: random.Random,
+    bias: list[str] | None = None,
+    exclude: set[str] | None = None,
+) -> TacticalKnobs:
     """Apply a single $M_1..M_k$ tactical mutation.
 
     ``bias`` is an ordered list of preferred knob fields (from the profiler's
     ``diagnose_fields``); when given, a biased field is chosen ~70% of the time
     so the mutation follows the hardware diagnosis instead of drifting randomly.
+    ``exclude`` removes fields from the candidate pool entirely — the inner
+    loop's attempt-history uses it to avoid re-trying recently failed levers
+    within the current structural epoch.
     """
     d = knobs.to_dict()
+    pool = [f for f in KNOB_FIELDS if f not in (exclude or set())]
+    if not pool:
+        pool = list(KNOB_FIELDS)
     if bias:
-        biased = [f for f in bias if f in KNOB_FIELDS]
+        biased = [f for f in bias if f in pool]
         if biased and rng.random() < 0.7:
             field = rng.choice(biased)
         else:
-            field = rng.choice(KNOB_FIELDS)
+            field = rng.choice(pool)
     else:
-        field = rng.choice(KNOB_FIELDS)
+        field = rng.choice(pool)
     _mutate_field(d, field, rng)
     return TacticalKnobs(**d)
 
@@ -90,9 +101,14 @@ def mutate_variant(variant: str, rng: random.Random) -> str:
     return VARIANT_ORDER[idx]
 
 
-def mutate_kernel(kernel: VTMKernel, rng: random.Random, bias: list[str] | None = None) -> VTMKernel:
+def mutate_kernel(
+    kernel: VTMKernel,
+    rng: random.Random,
+    bias: list[str] | None = None,
+    exclude: set[str] | None = None,
+) -> VTMKernel:
     """Return a copy of ``kernel`` with mutated tactical knobs."""
-    knobs = mutate_knobs(kernel.topology.knobs, rng, bias=bias)
+    knobs = mutate_knobs(kernel.topology.knobs, rng, bias=bias, exclude=exclude)
     return replace(kernel, topology=replace(kernel.topology, knobs=knobs))
 
 
@@ -121,7 +137,7 @@ def reopen_m0(kernel: VTMKernel, rng: random.Random) -> VTMKernel:
 
 
 def kernel_state(kernel: VTMKernel) -> tuple:
-    """Hashable state fingerprint of a kernel's M0 topology + tactical knobs."""
+    """Hashable state fingerprint of a kernel's structural topology + tactical knobs."""
     g = kernel.topology.grid
     k = kernel.topology.knobs
     return (

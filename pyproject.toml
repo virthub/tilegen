@@ -26,13 +26,13 @@ dependencies = [
 
 [project.optional-dependencies]
 # Heavy compiler/agent dependencies are isolated to offline/build time only.
-tilelang = ["tilelang>=0.1"]
-triton-tle = ["triton>=3.0"]
+tilelang = ["tilelang>=0.1.12"]
+triton-tle = ["triton>=3.5.1,<4"]
 evolve = ["numpy>=1.24"]
 dev = ["pytest>=7.0", "numpy>=1.24"]
 
-[project.urls]
-Homepage = "https://example.invalid/tilegen"
+# [project.urls]
+# Homepage: set when the repository gets a public URL.
 
 [project.entry-points."vllm.general_plugins"]
 tilegen = "tilegen.integrations.vllm.platform_plugin:register"

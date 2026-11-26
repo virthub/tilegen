@@ -13,8 +13,8 @@ if not vllm.__version__.startswith("0.34"):
     )
 
 try:
-    from tilegen.integrations.vllm.platform_plugin import register  # noqa: F401
-except Exception as exc:  # noqa: BLE001 - incompatible vLLM version
+    from tilegen.integrations.vllm.platform_plugin import register # noqa: F401
+except Exception as exc: # noqa: BLE001 - incompatible vLLM version
     pytest.skip(f"tilegen vllm plugin incompatible with vllm {vllm.__version__}: {exc}",
                 allow_module_level=True)
 

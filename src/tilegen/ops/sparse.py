@@ -32,14 +32,14 @@ def sparse_attention_forward(
         scale = 1.0 / (D ** 0.5)
     assert top_k <= M
 
-    scores = torch.einsum("bhnd,bhmd->bhnm", q, k) * scale      # [B, H, N, M]
-    topk_scores, topk_idx = torch.topk(scores, top_k, dim=-1)   # [B, H, N, k]
-    topk_weights = torch.softmax(topk_scores, dim=-1)           # [B, H, N, k]
+    scores = torch.einsum("bhnd,bhmd->bhnm", q, k) * scale # [B, H, N, M]
+    topk_scores, topk_idx = torch.topk(scores, top_k, dim=-1) # [B, H, N, k]
+    topk_weights = torch.softmax(topk_scores, dim=-1) # [B, H, N, k]
 
-    # Gather the selected values and weight-sum.
-    v_exp = v.unsqueeze(2).expand(B, H, N, M, D)                # [B, H, N, M, D]
-    idx_exp = topk_idx.unsqueeze(-1).expand(B, H, N, top_k, D)  # [B, H, N, k, D]
-    topk_v = torch.gather(v_exp, dim=3, index=idx_exp)          # [B, H, N, k, D]
+# Gather the selected values and weight-sum.
+    v_exp = v.unsqueeze(2).expand(B, H, N, M, D) # [B, H, N, M, D]
+    idx_exp = topk_idx.unsqueeze(-1).expand(B, H, N, top_k, D) # [B, H, N, k, D]
+    topk_v = torch.gather(v_exp, dim=3, index=idx_exp) # [B, H, N, k, D]
     return torch.einsum("bhnk,bhnkd->bhnd", topk_weights, topk_v)
 
 

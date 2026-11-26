@@ -29,7 +29,7 @@ class TestPacking:
         assert q.packed_bytes(128) == 64
 
     def test_scale_blocks(self):
-        q = QuantSpec.int8_kv()  # block_size 64
+        q = QuantSpec.int8_kv() # block_size 64
         assert q.num_scale_blocks(64) == 1
         assert q.num_scale_blocks(65) == 2
         assert q.num_scale_blocks(192) == 3

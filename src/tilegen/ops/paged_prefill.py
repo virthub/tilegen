@@ -17,11 +17,11 @@ def _paged_prefill_kernel(
     BLOCK_M: tl.constexpr, Q_LEN: tl.constexpr, IS_CAUSAL: tl.constexpr,
     IS_BF16: tl.constexpr,
 ):
-    pid_m = tl.program_id(0)   # query block
-    r = tl.program_id(1)       # request
+    pid_m = tl.program_id(0) # query block
+    r = tl.program_id(1) # request
     seq = tl.load(seq_lens + r)
 
-    offs_m = pid_m * BLOCK_M + tl.arange(0, BLOCK_M)   # query positions [BLOCK_M]
+    offs_m = pid_m * BLOCK_M + tl.arange(0, BLOCK_M) # query positions [BLOCK_M]
     offs_d = tl.arange(0, HEAD_DIM)
     offs_n = tl.arange(0, BLOCK_SIZE)
     offs_g = tl.arange(0, RATIO)
@@ -59,7 +59,7 @@ def _paged_prefill_kernel(
                 + hkv * HEAD_DIM + offs_d[None, :],
                 mask=mask[:, None], other=0.0,
             )
-            qk = tl.dot(q_flat, tl.trans(k)) * sm_scale   # [BLOCK_M*RATIO, BLOCK_SIZE]
+            qk = tl.dot(q_flat, tl.trans(k)) * sm_scale # [BLOCK_M*RATIO, BLOCK_SIZE]
             if IS_CAUSAL:
                 kvpos = blk * BLOCK_SIZE + offs_n
                 qk = tl.where(qpos[:, None] >= kvpos[None, :], qk, float("-inf"))

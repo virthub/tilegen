@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from sglang.srt.layers.radix_attention import RadixAttention
     from sglang.srt.model_executor.forward_batch_info import ForwardBatch, ForwardMode
 else:
-    _Base = object  # type: ignore[assignment]
+    _Base = object # type: ignore[assignment]
 
 
 def _kv_cache(kv_cache) -> tuple[torch.Tensor, torch.Tensor]:
@@ -42,7 +42,7 @@ class TileGenAttentionBackend(_Base):
         super().__init__(*args, **kwargs)
 
     def init_forward_metadata(self, forward_batch: "ForwardBatch"):
-        # TileGen kernels read seq_lens / req_pool_indices / req_to_token
+# TileGen kernels read seq_lens / req_pool_indices / req_to_token
         # directly from the batch; no wrapper state needed.
         return None
 
@@ -64,9 +64,9 @@ class TileGenAttentionBackend(_Base):
         req_idx = forward_batch.req_pool_indices
         seq_lens = forward_batch.seq_lens
 
-        # One batched launch: gather each request's token-indexed context and
-        # attend (SGLang radix-tree KV, [num_tokens, nkv, D] pool).
-        rtt = req_to_token[req_idx.long()]                 # [num_reqs, max_ctx]
+# One batched launch: gather each request's token-indexed context and
+# attend (SGLang radix-tree KV, [num_tokens, nkv, D] pool).
+        rtt = req_to_token[req_idx.long()] # [num_reqs, max_ctx]
         return paged_decode_tokens_forward(
             q, k_pool, v_pool, rtt, seq_lens, sm_scale=layer.scaling
         )
@@ -93,7 +93,7 @@ class TileGenAttentionBackend(_Base):
         num_kv_heads = k_pool.shape[1]
         ratio = num_heads // num_kv_heads
 
-        # Extend with cached prefix: each request's new tokens attend to the
+# Extend with cached prefix: each request's new tokens attend to the
         # cached prefix (token-indexed, radix tree) + the new tokens (causal).
         o: list[torch.Tensor] = []
         start = 0
@@ -102,14 +102,14 @@ class TileGenAttentionBackend(_Base):
             slen = int(seq_lens[i].item())
             if plen > 0:
                 toks = req_to_token[int(req_idx[i].item()), :plen].long()
-                k_pre = k_pool[toks]                      # [plen, nkv, dim]
+                k_pre = k_pool[toks] # [plen, nkv, dim]
                 v_pre = v_pool[toks]
             else:
                 k_pre = k_pool[:0]
                 v_pre = v_pool[:0]
-            k_new = k[start:start + slen]                 # [slen, nkv, dim]
+            k_new = k[start:start + slen] # [slen, nkv, dim]
             v_new = v[start:start + slen]
-            k_cat = torch.cat([k_pre, k_new], dim=0)      # [plen+slen, nkv, dim]
+            k_cat = torch.cat([k_pre, k_new], dim=0) # [plen+slen, nkv, dim]
             v_cat = torch.cat([v_pre, v_new], dim=0)
             if ratio > 1:
                 k_cat = k_cat.repeat_interleave(ratio, dim=1)
@@ -119,7 +119,7 @@ class TileGenAttentionBackend(_Base):
             k4 = k_cat.transpose(0, 1).unsqueeze(0)
             v4 = v_cat.transpose(0, 1).unsqueeze(0)
             out = dense_attention(q4, k4, v4, is_causal=True, scale=layer.scaling)
-            o.append(out.squeeze(0).transpose(0, 1))      # [slen, H, dim]
+            o.append(out.squeeze(0).transpose(0, 1)) # [slen, H, dim]
             start += slen
         return torch.cat(o, dim=0) if o else q.new_empty((0, num_heads, q.shape[-1]))
 

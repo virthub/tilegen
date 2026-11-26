@@ -50,6 +50,35 @@ def _load_module_from_source(source: str, module_name: str):
     return mod
 
 
+def forward_fn_for_variant(variant: str):
+    """Resolve the kernel entrypoint for a structure variant (module-level so
+    the NCU profiling subprocess can reconstruct the launch without
+    instantiating an evaluator)."""
+    if variant == "sdpa":
+        import torch.nn.functional as F
+
+        def _sdpa(q, k, v, is_causal=False, sm_scale=None, **params):
+            del params
+            return F.scaled_dot_product_attention(q, k, v, is_causal=is_causal, scale=sm_scale)
+
+        return _sdpa
+    if variant == "fa3_tma":
+        from tilegen.ops.flash_tma import flash_attention_tma_forward
+
+        return flash_attention_tma_forward
+    if variant == "fa3_ws":
+        from tilegen.ops.flash import flash_attention_fa3_forward
+
+        return flash_attention_fa3_forward
+    if variant == "fa4_tilelang":
+        from tilegen.ops.flash_tilelang import flash_attention_tilelang_forward
+
+        return flash_attention_tilelang_forward
+    from tilegen.ops.flash import flash_attention_forward
+
+    return flash_attention_forward
+
+
 def synthetic_telemetry(knobs) -> dict[str, float]:
     """Heuristic stall profile when no hardware profiler is attached.
 
@@ -82,6 +111,7 @@ class TritonAttentionEvaluator(KernelEvaluator):
         sm_scale=None,
         reference_params: Optional[dict] = None,
         iters: int = 20,
+        profiler=None,
     ):
         import torch
         import torch.nn.functional as F
@@ -93,63 +123,59 @@ class TritonAttentionEvaluator(KernelEvaluator):
         self.sm_scale = sm_scale
         self.iters = iters
         self.reference_params = reference_params or {}
+        self.profiler = profiler # real-telemetry backend (optional)
 
         # Independent correctness baseline (native SDPA).
         self.ref_out = F.scaled_dot_product_attention(q, k, v, is_causal=is_causal)
         torch.cuda.synchronize()
 
         self._ref_time_us: Optional[float] = None
-        # Memoize (variant, params) -> device_time_us so re-encountered configs
+# Memoize (variant, params) -> device_time_us so re-encountered configs
         # are not recompiled/re-timed across generations.
         self._timing_cache: dict[tuple, float] = {}
 
     def _forward_fn(self, variant: str):
-        if variant == "sdpa":
-            import torch.nn.functional as F
+# fa1 and fa2_bf16 both run the FA2 kernel; the FA1 vs FA2 distinction
+        # is carried by the candidate's topology knobs.
+        return forward_fn_for_variant(variant)
 
-            def _sdpa(q, k, v, is_causal=False, sm_scale=None, **params):
-                del params
-                return F.scaled_dot_product_attention(q, k, v, is_causal=is_causal, scale=sm_scale)
-
-            return _sdpa
-        if variant == "fa3_tma":
-            from tilegen.ops.flash_tma import flash_attention_tma_forward
-
-            return flash_attention_tma_forward
-        if variant == "fa3_ws":
-            from tilegen.ops.flash import flash_attention_fa3_forward
-
-            return flash_attention_fa3_forward
-        if variant == "fa4_tilelang":
-            from tilegen.ops.flash_tilelang import flash_attention_tilelang_forward
-
-            return flash_attention_tilelang_forward
-        # fa1 and fa2_bf16 both run the FA2 kernel; the FA1 vs FA2 distinction is
-        # carried by the candidate's topology knobs (64x64/stages-1 vs 128x128).
-        from tilegen.ops.flash import flash_attention_forward
-
-        return flash_attention_forward
-
-    def _time_config(self, params: dict, variant: str = "fa2_bf16") -> float:
+    def _measure_runs(
+        self, params: dict, variant: str = "fa2_bf16",
+        warmup: int = 5, iters: Optional[int] = None,
+    ) -> list[float]:
+        """Per-iteration timing samples in microseconds (uncached)."""
         import time
 
         import torch
 
+        iters = iters if iters is not None else self.iters
+        fn = self._forward_fn(variant)
+        for _ in range(warmup):
+            fn(self.q, self.k, self.v, is_causal=self.is_causal,
+               sm_scale=self.sm_scale, **params)
+        torch.cuda.synchronize()
+        runs: list[float] = []
+        for _ in range(iters):
+            t0 = time.perf_counter()
+            fn(self.q, self.k, self.v, is_causal=self.is_causal,
+               sm_scale=self.sm_scale, **params)
+            torch.cuda.synchronize()
+            runs.append((time.perf_counter() - t0) * 1e6)
+        return runs
+
+    def sample_times(
+        self, params: dict, variant: str = "fa2_bf16",
+        warmup: int = 2, iters: int = 8,
+    ) -> list[float]:
+        """Uncached samples for noise-floor estimation (bypasses the memo)."""
+        return self._measure_runs(params, variant, warmup=warmup, iters=iters)
+
+    def _time_config(self, params: dict, variant: str = "fa2_bf16") -> float:
         cache_key = (variant, tuple(sorted(params.items())))
         if cache_key in self._timing_cache:
             return self._timing_cache[cache_key]
-
-        fn = self._forward_fn(variant)
-        for _ in range(5):
-            fn(self.q, self.k, self.v, is_causal=self.is_causal,
-               sm_scale=self.sm_scale, **params)
-        torch.cuda.synchronize()
-        t0 = time.perf_counter()
-        for _ in range(self.iters):
-            fn(self.q, self.k, self.v, is_causal=self.is_causal,
-               sm_scale=self.sm_scale, **params)
-        torch.cuda.synchronize()
-        us = (time.perf_counter() - t0) / self.iters * 1e6
+        runs = self._measure_runs(params, variant)
+        us = sum(runs) / len(runs)
         self._timing_cache[cache_key] = us
         return us
 
@@ -179,6 +205,15 @@ class TritonAttentionEvaluator(KernelEvaluator):
             params = knobs_to_params(c.vtm_ir.topology.knobs)
             fn = self._forward_fn(c.variant)
             telemetry = synthetic_telemetry(c.vtm_ir.topology.knobs)
+            if self.profiler is not None:
+                try:
+                    key = f"{c.variant}:{sorted(params.items())}"
+                    telemetry = self.profiler.telemetry(
+                        key, c.variant, params,
+                        (self.q, self.k, self.v), self.is_causal,
+                        self.sm_scale) or telemetry
+                except Exception:
+                    pass # real profiling is best-effort; synthetic remains
             try:
                 out = self._call(fn, params)
                 torch.cuda.synchronize()
@@ -196,7 +231,7 @@ class TritonAttentionEvaluator(KernelEvaluator):
                         telemetry=telemetry,
                     )
                 )
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc: # noqa: BLE001
                 results.append(
                     EvalResult(
                         candidate_id=c.candidate_id,
@@ -225,7 +260,7 @@ class GeneratedKernelEvaluator(KernelEvaluator):
     semantic hash of (VTM, target, backend).  The reference is native SDPA.
     """
 
-    def __init__(self, q, k, v, is_causal: bool = True, sm_scale=None, iters: int = 20):
+    def __init__(self, q, k, v, is_causal: bool = True, sm_scale=None, iters: int = 20, allow_code_override: bool = False):
         import torch
         import torch.nn.functional as F
 
@@ -235,6 +270,7 @@ class GeneratedKernelEvaluator(KernelEvaluator):
         self.is_causal = is_causal
         self.sm_scale = sm_scale
         self.iters = iters
+        self.allow_code_override = allow_code_override
         self.ref_out = F.scaled_dot_product_attention(q, k, v, is_causal=is_causal)
         torch.cuda.synchronize()
         self._compiled: dict[str, object] = {}
@@ -245,9 +281,13 @@ class GeneratedKernelEvaluator(KernelEvaluator):
         from tilegen.runtime.hash import semantic_hash
 
         kernel = candidate.vtm_ir
-        backend_name = backend_for_kernel(kernel)   # VTM topology is the source of truth
+        backend_name = backend_for_kernel(kernel) # VTM topology is the source of truth
+        if candidate.code_override and not self.allow_code_override:
+            raise RuntimeError(
+                "code_override is not allowed (isolation audit: the outer "
+                "loop must go through the VTM IR, not smuggled source)")
         if candidate.code_override:
-            # External evolvers may supply direct Triton/TileLang source; it
+# External evolvers may supply direct Triton/TileLang source; it
             # takes precedence over lowering from the VTM IR.
             key = semantic_hash({"code_override": candidate.code_override, "target": target.to_dict()})
             if key in self._compiled:
@@ -309,7 +349,7 @@ class GeneratedKernelEvaluator(KernelEvaluator):
                         telemetry=telemetry,
                     )
                 )
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc: # noqa: BLE001
                 results.append(
                     EvalResult(
                         candidate_id=c.candidate_id,
@@ -320,6 +360,28 @@ class GeneratedKernelEvaluator(KernelEvaluator):
                     )
                 )
         return results
+
+    def sample_times(
+        self, params: dict, variant: str = "fa2_bf16",
+        warmup: int = 2, iters: int = 8,
+    ) -> list[float]:
+        """Uncached timing samples for the native-SDPA reference path."""
+        import time
+
+        import torch
+        import torch.nn.functional as F
+
+        del params, variant
+        for _ in range(warmup):
+            F.scaled_dot_product_attention(self.q, self.k, self.v, is_causal=self.is_causal)
+        torch.cuda.synchronize()
+        runs: list[float] = []
+        for _ in range(iters):
+            t0 = time.perf_counter()
+            F.scaled_dot_product_attention(self.q, self.k, self.v, is_causal=self.is_causal)
+            torch.cuda.synchronize()
+            runs.append((time.perf_counter() - t0) * 1e6)
+        return runs
 
     def profile_reference(self, sealed_ref_id: str, target: TargetSpec) -> dict:
         import time

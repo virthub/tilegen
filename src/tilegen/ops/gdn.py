@@ -29,10 +29,10 @@ def gdn_forward(
     T, D = x.shape
     d = wk.shape[1]
 
-    k = (x @ wk).float()        # [T, d]
-    v = (x @ wv).float()        # [T, d]
-    q = (x @ wq).float()        # [T, d]
-    beta = torch.sigmoid(x @ wb).float()  # [T, 1]
+    k = (x @ wk).float() # [T, d]
+    v = (x @ wv).float() # [T, d]
+    q = (x @ wq).float() # [T, d]
+    beta = torch.sigmoid(x @ wb).float() # [T, 1]
 
     S = torch.zeros(d, d, device=x.device, dtype=torch.float32)
     o = torch.zeros(T, d, device=x.device, dtype=torch.float32)

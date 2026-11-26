@@ -4,7 +4,14 @@
 
 from __future__ import annotations
 
-from tilegen.backend._common import TRITON_DTYPE, header, var
+from tilegen.backend._common import (
+    SKETCH_BANNER,
+    TRITON_DTYPE,
+    guard_sketch,
+    header,
+    sketch_reason,
+    var,
+)
 from tilegen.backend.base import Backend, register_backend
 from tilegen.ir.ops import (
     DequantOp,
@@ -88,7 +95,9 @@ class TritonBackend(Backend):
                 return self._lower_fa3(kernel, target)
             return self._lower_dense_fa2(kernel, target)
         tier = self._tier(kernel, target)
-        lines = [header(kernel, target, f"triton ({tier})")]
+        guard_sketch(kernel)
+        lines = [header(kernel, target, f"triton ({tier})"),
+                 f"{SKETCH_BANNER} - {sketch_reason(kernel)}"]
         lines += [
             "import triton",
             "import triton.language as tl",
@@ -116,7 +125,7 @@ class TritonBackend(Backend):
         return "\n".join(lines) + "\n"
 
     def dump_ir(self, kernel: VTMKernel, target: TargetSpec) -> str:
-        # No separate intermediate IR; surface the lowered Triton source as the
+# No separate intermediate IR; surface the lowered Triton source as the
         # closest available representation.
         return (
             "# No separate intermediate IR; "
@@ -237,11 +246,11 @@ class TritonBackend(Backend):
             isinstance(op, MaskOp) and op.type == "CAUSAL"
             for op in _walk(kernel.body)
         )
-        # Triton's automatic warp specialization is Blackwell-only; FA3 on
+# Triton's automatic warp specialization is Blackwell-only; FA3 on
         # Hopper/Ampere degrades to the plain FA2 loop.
         if warp_specialize and not target.supports("tcgen05"):
             warp_specialize = False
-        # sm_120-tuned recipe (matches flash.RECIPE); larger smem permits larger
+# sm_120-tuned recipe (matches flash.RECIPE); larger smem permits larger
         # tiles, but 64x64 is the safe cross-arch default for mma_sync/wgmma.
         block_m = 64
         block_n = 64

@@ -32,19 +32,19 @@ def moe_forward(
     E, inter2, _ = w1.shape
     I = inter2 // 2
 
-    weights, indices = moe_topk_gate(gate_logits, top_k)  # [T, k], [T, k]
+    weights, indices = moe_topk_gate(gate_logits, top_k) # [T, k], [T, k]
     out = torch.zeros(T, H, device=x.device, dtype=x.dtype)
 
     for e in range(E):
-        token_mask = indices == e                    # [T, k]
-        tw = (weights * token_mask).sum(dim=1)       # [T] weight for expert e
+        token_mask = indices == e # [T, k]
+        tw = (weights * token_mask).sum(dim=1) # [T] weight for expert e
         sel = tw > 0
         if not sel.any():
             continue
-        xe = x[sel]                                  # [n, H]
-        gate_up = xe @ w1[e].t()                     # [n, 2I]
-        h = F.silu(gate_up[:, :I]) * gate_up[:, I:]  # SwiGLU [n, I]
-        y = h @ w2[e].t()                            # [n, H]
+        xe = x[sel] # [n, H]
+        gate_up = xe @ w1[e].t() # [n, 2I]
+        h = F.silu(gate_up[:, :I]) * gate_up[:, I:] # SwiGLU [n, I]
+        y = h @ w2[e].t() # [n, H]
         out[sel] += y * tw[sel, None]
     return out
 

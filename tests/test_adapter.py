@@ -72,7 +72,7 @@ def test_from_dict_verifies_invalid():
     )
     with pytest.raises(ValueError):
         vtm_kernel_from_dict(data)
-    vtm_kernel_from_dict(data, verify=False)  # verify=False skips structural checks
+    vtm_kernel_from_dict(data, verify=False) # verify=False skips structural checks
 
 
 def test_from_dict_rejects_non_dict():

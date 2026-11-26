@@ -47,8 +47,8 @@ def available_backends() -> list[str]:
 
 def _import_emitters() -> None:
     """Lazily import the built-in emitters so they self-register."""
-    from tilegen.backend.tilelang.emitter import TileLangBackend  # noqa: F401
-    from tilegen.backend.triton.emitter import TritonBackend  # noqa: F401
+    from tilegen.backend.tilelang.emitter import TileLangBackend # noqa: F401
+    from tilegen.backend.triton.emitter import TritonBackend # noqa: F401
 
 
 def ensure_backends_registered() -> None:

@@ -104,7 +104,7 @@ def test_decode_codegen_is_single_launch():
     )
     kernel = build_decode_vtm(spec, get_target("sm_90a"))
     src = get_backend("triton").lower(kernel, get_target("sm_90a"))
-    # The kernel dispatches with a 1-D grid over requests: assert the source
+# The kernel dispatches with a 1-D grid over requests: assert the source
     # uses ``tl.program_id(0)`` as the request index and a single launch.
     assert "r = tl.program_id(0)" in src
     assert "for blk in range(0, num_blocks)" in src

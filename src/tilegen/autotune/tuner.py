@@ -170,7 +170,7 @@ def torch_sync():
         if torch.cuda.is_available():
             torch.cuda.synchronize()
             return torch
-    except ImportError:  # pragma: no cover
+    except ImportError: # pragma: no cover
         pass
     return None
 

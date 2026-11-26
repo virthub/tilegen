@@ -196,7 +196,7 @@ def test_codegen_valid_python_across_target_matrix(target_name):
     kernel = build_dense_attention_vtm(spec, t, variant="fa2_prefill")
     for backend in ("triton", "tilelang"):
         src = get_backend(backend).lower(kernel, t)
-        ast.parse(src)  # must be valid Python
+        ast.parse(src) # must be valid Python
         assert "def main(" in src or "def dense_fa2(" in src
 
 

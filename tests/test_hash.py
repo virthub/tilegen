@@ -36,8 +36,8 @@ class TestSemanticHash:
         assert semantic_hash({"a": 1}) != semantic_hash({"a": 2})
 
     def test_sha256_known_vector(self):
-        # canonical_json of "" is '""'; sha256('""')[:40] must equal the digest
-        # of the same bytes.  Verify against Python's own hashlib.
+# canonical_json of "" is '""'; sha256('""')[:40] must equal the digest
+        # of the same bytes. Verify against Python's own hashlib.
         import hashlib
 
         payload = canonical_json("")

@@ -39,6 +39,9 @@ class RLRolloutEngine(SynthesisEngine):
         budget: dict[str, int] | None = None,
     ) -> KernelCandidate:
         budget = budget or {"rollouts": 3, "batch": 8}
+        from tilegen.evolve.noise import campaign_noise, gate_value
+
+        noise_floor, _ref_stats = campaign_noise(evaluator, initial_kernel)
         rollouts = budget.get("rollouts", 3)
         batch = budget.get("batch", 8)
         rng = random.Random(self._seed)
@@ -63,13 +66,14 @@ class RLRolloutEngine(SynthesisEngine):
                 key=lambda cr: reward(cr[1]),
                 reverse=True,
             )
-            # ε-greedy: exploit the best with prob 1-ε, explore a random rollout
+# ε-greedy: exploit the best with prob 1-ε, explore a random rollout
             # with prob ε (escaping local optima that pure argmax would settle on).
             idx = rng.randrange(len(scored)) if rng.random() < self.epsilon else 0
             top_candidate, top_result = scored[idx]
             top_reward = reward(top_result)
             incumbent = top_candidate.vtm_ir
-            if top_reward > best_reward:
+            gate = gate_value(noise_floor, 1.05 if rollout == 0 else 1.0)
+            if top_reward >= gate and top_reward > best_reward:
                 best_reward = top_reward
                 best = top_candidate
 

@@ -9,8 +9,12 @@ reference:
   sealed_ref_id: null
   seed_from: null
 curriculum:
-  reopen_m0_on_plateau: true
-  plateau_window_generations: 2
-  plateau_speedup_threshold: 0.02
+  operator_class: attention
+  thresholds:
+    N_stall: 2
+    N_gate: 2
+    graph_exhaustion_ratio: 0.9
+    failure_concentration_threshold: 0.7
+  active_bootstrap_multiplier: 1.0
 knowledge_store:
   dir: conf/kb

@@ -14,8 +14,8 @@ class TargetSpec:
 
     name: str
     arch: str
-    device: str = "cuda"                  # cuda / rocm / ascend
-    sm: Optional[str] = None              # e.g. sm_90a, gfx942, ascend_910c
+    device: str = "cuda" # cuda / rocm / ascend
+    sm: Optional[str] = None # e.g. sm_90a, gfx942, ascend_910c
     num_sms: int = 108
     max_smem_bytes: int = 228 * 1024
     max_registers_per_thread: int = 255

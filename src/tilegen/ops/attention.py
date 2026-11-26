@@ -39,8 +39,8 @@ class AttentionSpec:
     kv_quant: QuantSpec = field(default_factory=QuantSpec.int4_kv)
     causal: bool = True
     scale: Optional[float] = None
-    # Decode-specific (query_len=1, variable kv_len per request).
-    mode: str = "prefill"          # "prefill" | "decode"
+# Decode-specific (query_len=1, variable kv_len per request).
+    mode: str = "prefill" # "prefill" | "decode"
     query_len: int = 1
 
     def __post_init__(self) -> None:
@@ -295,8 +295,8 @@ def build_cp_attention_vtm(
 
     H_q, D = spec.num_heads, spec.head_dim
     cp = max(1, parallel.cp_degree)
-    s_q = SymbolicDim("S_q", value=spec.seq_len // cp)         # local Q shard
-    s_kv = SymbolicDim("S_kv", value=spec.seq_len // cp)       # local K/V shard
+    s_q = SymbolicDim("S_q", value=spec.seq_len // cp) # local Q shard
+    s_kv = SymbolicDim("S_kv", value=spec.seq_len // cp) # local K/V shard
     topology = attention_topology(variant, target)
     bm, bn = topology.knobs.tile_m, topology.knobs.tile_n
 

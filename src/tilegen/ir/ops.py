@@ -109,7 +109,7 @@ class OnlineSoftmaxOp(VTMOp):
     exp_emulation_ratio: float = 0.0
     rescale_threshold: float = 0.0
     is_final: bool = False
-    global_reduce: bool = False      # all-reduce max/sum across CP/SP ranks
+    global_reduce: bool = False # all-reduce max/sum across CP/SP ranks
     role: str = "vector_postop"
 
     def __init__(
@@ -188,7 +188,7 @@ class PipelineForOp(VTMOp):
     start: str = "0"
     end: str = "1"
     stages: int = 1
-    body: tuple = ()  # tuple[VTMOp, ...]
+    body: tuple = () # tuple[VTMOp, ...]
 
     def __init__(
         self,
@@ -236,7 +236,7 @@ class ReduceScatterOp(VTMOp):
     tensor: str = ""
     dim: int = 0
     degree: int = 1
-    op: str = "sum"                 # sum | max | min
+    op: str = "sum" # sum | max | min
     role: str = "collective"
 
     def __init__(self, tensor: str, dim: int = 0, degree: int = 1, op: str = "sum", role: str = "collective", **kw: Any) -> None:
@@ -253,7 +253,7 @@ class AllReduceOp(VTMOp):
     """Collective: all-reduce softmax statistics (max/sum) across CP/SP ranks."""
 
     tensor: str = ""
-    reduce_op: str = "max"          # max | sum
+    reduce_op: str = "max" # max | sum
     role: str = "collective"
 
     def __init__(self, tensor: str, reduce_op: str = "max", role: str = "collective", **kw: Any) -> None:
@@ -289,13 +289,13 @@ class VTMKernel:
     """A serializable VTM kernel: buffers, topology, layouts, quants, body."""
 
     name: str
-    inputs: tuple = ()          # tuple[VTMBuffer, ...]
-    outputs: tuple = ()         # tuple[VTMBuffer, ...]
-    buffers: tuple = ()         # tuple[VTMBuffer, ...] internal allocations
+    inputs: tuple = () # tuple[VTMBuffer, ...]
+    outputs: tuple = () # tuple[VTMBuffer, ...]
+    buffers: tuple = () # tuple[VTMBuffer, ...] internal allocations
     topology: TopologySpec = field(default_factory=TopologySpec)
-    layouts: dict = field(default_factory=dict)   # name -> layout descriptor
-    quants: dict = field(default_factory=dict)    # name -> QuantSpec
-    body: tuple = ()            # tuple[VTMOp, ...]
+    layouts: dict = field(default_factory=dict) # name -> layout descriptor
+    quants: dict = field(default_factory=dict) # name -> QuantSpec
+    body: tuple = () # tuple[VTMOp, ...]
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "inputs", tuple(self.inputs))

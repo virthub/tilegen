@@ -39,7 +39,7 @@ from tilegen.ir.types import MemoryTier, SymbolicDim, VTMBuffer
 
 # NOTE: tilegen.layout.layout imports tilegen.ir.types, so importing it here at
 # module level would create a package-init cycle (tilegen.layout -> ir ->
-# from_dict -> tilegen.layout).  Both layout imports are therefore lazy.
+# from_dict -> tilegen.layout). Both layout imports are therefore lazy.
 
 
 def _shape_dim(x: Any):

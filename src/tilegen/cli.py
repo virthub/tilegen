@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -16,7 +17,7 @@ _PHASE_MSG = {}
 
 
 def _load_yaml(path: Path) -> dict:
-    import yaml  # type: ignore
+    import yaml # type: ignore
 
     with path.open("r", encoding="utf-8") as f:
         data = yaml.safe_load(f)
@@ -91,6 +92,10 @@ def cmd_compile(args: argparse.Namespace) -> int:
         out.write_text(source, encoding="utf-8")
         print(f"[tilegen] lowered source ({backend.name}) written to {out}")
 
+    if source.startswith("# SKETCH TIER"):
+        print("[tilegen] WARNING: sketch-tier output - NOT runnable "
+              "(set TILEGEN_STRICT_CODEGEN=1 to fail instead)", file=sys.stderr)
+
     print(f"[tilegen] TileGen v{__version__}")
     print(f"[tilegen] target      : {target.name} ({target.arch})")
     print(f"[tilegen] backend     : {backend_key}")
@@ -120,7 +125,7 @@ def cmd_selftest(args: argparse.Namespace) -> int:
 
 def cmd_test(args: argparse.Namespace) -> int:
     try:
-        import pytest  # type: ignore  # noqa: F401
+        import pytest # type: ignore # noqa: F401
     except ImportError:
         print("[tilegen] pytest not installed; falling back to built-in selftest", file=sys.stderr)
         return cmd_selftest(args)
@@ -141,7 +146,21 @@ def cmd_evolve(args: argparse.Namespace) -> int:
     target = _resolve_target(cfg, args)
     spec = _build_attention_config(cfg)
     strategy = args.strategy or cfg.get("strategy", "forgekernel")
-    budget = cfg.get("budget") or {}
+    budget = dict(cfg.get("budget") or {})
+# Bridge the conf's curriculum section into the campaign budget, with a
+    # legacy-key mapping (plateau_window_generations -> thresholds.N_stall).
+    curriculum_cfg = dict(cfg.get("curriculum") or {})
+    if curriculum_cfg:
+        thresholds = dict(curriculum_cfg.get("thresholds") or {})
+        if "plateau_window_generations" in curriculum_cfg:
+            thresholds.setdefault(
+                "N_stall", int(curriculum_cfg["plateau_window_generations"]))
+        merged = {k: v for k, v in curriculum_cfg.items()
+                  if k not in ("thresholds", "plateau_window_generations")}
+        if thresholds:
+            merged["thresholds"] = thresholds
+        if merged:
+            budget.setdefault("curriculum", merged)
 
     from tilegen.evolve.evaluator import TritonAttentionEvaluator, knobs_to_params
     from tilegen.evolve.kb_manager import FileKnowledgeStore
@@ -161,11 +180,20 @@ def cmd_evolve(args: argparse.Namespace) -> int:
     k = torch.randn_like(q)
     v = torch.randn_like(q)
 
+    profiler = None
+    if os.environ.get("TILEGEN_PROFILE") == "ncu":
+        from tilegen.evolve.profiler import NcuProfiler
+
+        profiler = NcuProfiler()
     evaluator = TritonAttentionEvaluator(
         q, k, v, is_causal=True, sm_scale=spec.scale,
         reference_params=knobs_to_params(initial_kernel.topology.knobs),
+        profiler=profiler,
     )
-    kb = FileKnowledgeStore(args.kb or "conf/kb")
+    kb = FileKnowledgeStore(
+        args.kb
+        or (cfg.get("knowledge_store") or {}).get("dir")
+        or "conf/kb")
     engine = get_engine(strategy)
 
     print(f"[tilegen] evolve: strategy={strategy} target={target.name} budget={budget}")
@@ -242,7 +270,7 @@ def cmd_autotune(args: argparse.Namespace) -> int:
         )
         t1.record()
         torch.cuda.synchronize()
-        return t0.elapsed_time(t1) / 1e3  # seconds
+        return t0.elapsed_time(t1) / 1e3 # seconds
 
     results = autotune(pruned, profile, warmup=2, iters=5)
     for r in results[:5]:
